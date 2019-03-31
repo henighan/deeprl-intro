@@ -63,6 +63,7 @@ class VPG():
         # value function estimator loss and train op
         self.val_loss, self.val_train_op = self.build_val_loss(
             self.val, self.placeholders['ret'], lr=self.val_lr)
+        self.sess.run(tf.global_variables_initializer())
 
     def create_placeholders(self, obs_space, act_space):
         """ Build the placeholders required for this agent """
@@ -79,7 +80,7 @@ class VPG():
         with tf.variable_scope('val'):
             val = mlp(obs_ph, hidden_sizes=hidden_sizes + (1,),
                       activation=activation)
-        return tf.squeeze(val)
+        return tf.reshape(val, [-1])
 
     @staticmethod
     def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
