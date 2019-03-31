@@ -13,7 +13,7 @@ class Learner():
         self.epoch_len, self.n_epochs = epoch_len, n_epochs
         self.buffer = Buffer(env.observation_space.shape[0],
                                 env.action_space.shape[0],
-                                epoch_len, 1, 0)
+                                epoch_len, 0.99, 0.95)
         self.logger = EpochLogger(output_dir=output_dir,
                                   output_fname=output_fname, exp_name=None)
         agent.build_graph(env.observation_space, env.action_space)
@@ -27,13 +27,17 @@ class Learner():
         ep_len, ep_ret, is_term_state = 0, 0, False
         while (not self.buffer.full) and (not is_term_state):
             act, val_t, logp_t = self.agent.step(obs)
-            self.logger.store(VVals=val_t)
+            self.logger.store(VVals=val_t, Logp=logp_t)
             self.buffer.store(obs, act, rew, val_t, logp_t)
             ep_len += 1
             ep_ret += rew
             obs, rew, is_term_state, _ = self.env.step(act)
         if is_term_state:
             self.logger.store(EpRet=ep_ret, EpLen=ep_len)
+        else:
+            # if trajectory didn't reach terminal state, bootstrap to target
+            _, rew, _ = self.agent.step(obs)
+        self.buffer.finish_path(rew) # calculate advantage
         return ep_len, ep_ret
 
     def play_epoch(self):
@@ -59,6 +63,7 @@ class Learner():
         self.logger.log_tabular('EpRet', with_min_and_max=True)
         self.logger.log_tabular('EpLen', average_only=True)
         self.logger.log_tabular('VVals', with_min_and_max=True)
+        self.logger.log_tabular('Logp', with_min_and_max=True)
         self.logger.log_tabular('TotalEnvInteracts', (epoch+1)*self.epoch_len)
         self.logger.log_tabular('LossPi', average_only=True)
         self.logger.log_tabular('LossV', average_only=True)

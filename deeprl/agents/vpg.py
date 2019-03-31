@@ -7,7 +7,7 @@ from deeprl.tf_utils import mlp
 
 class VPG():
 
-    def __init__(self, pi_lr=1e-3, val_lr=1e-3, hidden_sizes=(32, 32),
+    def __init__(self, pi_lr=3e-4, val_lr=1e-3, hidden_sizes=(32, 32),
                  activation=tf.tanh, val_train_iters=80, sess=None,
                  close_sess=True):
         self.pi_lr, self.val_lr = pi_lr, val_lr
