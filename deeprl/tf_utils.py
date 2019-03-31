@@ -18,3 +18,9 @@ def mlp(x, hidden_sizes=(32,), activation=tf.tanh, output_activation=None):
             x = tf.layers.dense(x, units=hidden_sizes[-1],
                                 activation=output_activation)
     return x
+
+
+def tfph(size, name=None):
+    """ create tensorflow placeholder """
+    shape = [None, size] if size else [None]
+    return tf.placeholder(dtype=tf.float32, shape=shape, name=name)

@@ -55,3 +55,22 @@ class TestTfUtils(tf.test.TestCase):
             self.assertIn((5,), variable_shapes)
             self.assertIn((4,), variable_shapes)
             self.assertIn((3,), variable_shapes)
+
+    def test_tfph_smoke(self):
+        """ smoke test tfph """
+        x_dim = 3
+        x = np.random.rand(8, x_dim)
+        x_ph = tf_utils.tfph(x_dim)
+        with self.cached_session() as sess:
+            ret = sess.run(x_ph, feed_dict={x_ph: x})
+            np.testing.assert_almost_equal(x, ret)
+
+    def test_tfph_None(self):
+        """ test tfph when size is None"""
+        x_dim = None
+        x = np.random.rand(8)
+        x_ph = tf_utils.tfph(None, name='x')
+        self.assertTrue(x_ph.name.startswith('x'))
+        with self.cached_session() as sess:
+            ret = sess.run(x_ph, feed_dict={x_ph: x})
+            np.testing.assert_almost_equal(x, ret)
