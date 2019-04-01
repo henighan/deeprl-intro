@@ -1,4 +1,3 @@
 pytest
-pytest-mocker
-pytest-factoryboy
-factory_boy
+pytest-mock
+unittest
