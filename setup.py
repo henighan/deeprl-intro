@@ -15,4 +15,9 @@ setup(
         'gym'
     ],
     author='Tom Henighan',
+    entry_points={
+        'console_scripts': [
+            'deeprl = deeprl.manage:cli'
+        ]
+    }
 )
