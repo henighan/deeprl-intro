@@ -1,4 +1,4 @@
-""" Compare Experiments """
+""" Experiment Runners """
 import os
 import gym
 from deeprl.learner import Learner
@@ -17,6 +17,8 @@ def run(exp_name, implementation, num_runs, **kwargs):
     elif implementation == 'tom':
         exp_name = log_utils.kwargs_to_exp_name(exp_name, kwargs)
         output_dir = os.path.join('./data/tom', exp_name, exp_name)
+        ouput_dir_base = log_utils.output_dir_base_from_kwargs(
+            exp_name, implementation, kwargs)
         print('saving to {}'.format(output_dir))
         run_tom_grid(exp_name, output_dir, num_runs=num_runs, **kwargs)
 
@@ -49,3 +51,4 @@ def run_tom_grid(exp_name, output_dir, num_runs=3,
                           steps_per_epoch=steps_per_epoch, epochs=epochs,
                           seed=seed)
         learner.learn()
+        del agent
