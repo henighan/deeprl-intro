@@ -45,8 +45,8 @@ def test_play_episode_episode_ends(mocker, learner):
 def test_learner_smoke(mocker, continuous_env):
     """ Give it a a test run witha mock agent, see that is produces logs """
     output_dir, exp_name = 'tests/tmp_test_outputs', 'learner_test'
-    learner = Learner(mocker.Mock(), continuous_env, epoch_len=1000,
-                      n_epochs=4, output_dir='tests/tmp_test_outputs',
+    learner = Learner(mocker.Mock(), continuous_env, steps_per_epoch=1000,
+                      epochs=4, output_dir='tests/tmp_test_outputs',
                       exp_name='learner_test')
     learner.agent.take_step.return_value = ([0], random.random(),
                                             random.random())
