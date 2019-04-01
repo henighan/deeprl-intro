@@ -2,10 +2,11 @@
 import tensorflow as tf
 
 
-def trainable_count():
+def trainable_count(scope=''):
     """ returns the number of trainable parameters """
     return tf.reduce_sum([tf.reduce_prod(var.get_shape())
-                          for var in tf.trainable_variables()])
+                          for var in tf.trainable_variables()
+                          if scope in var.name])
 
 
 def mlp(x, hidden_sizes=(32,), activation=tf.tanh, output_activation=None):
