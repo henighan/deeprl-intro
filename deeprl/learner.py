@@ -8,12 +8,12 @@ import time
 
 class Learner():
 
-    def __init__(self, agent, env, epoch_len=100, n_epochs=2, seed=0, output_dir=None, output_fname='progress.txt', exp_name=None):
+    def __init__(self, agent, env, steps_per_epoch=1000, epochs=50, seed=0, output_dir=None, output_fname='progress.txt', exp_name=None):
         self.env, self.agent = env, agent
-        self.epoch_len, self.n_epochs = epoch_len, n_epochs
+        self.epoch_len, self.n_epochs = steps_per_epoch, epochs
         self.buffer = Buffer(env.observation_space.shape[0],
                                 env.action_space.shape[0],
-                                epoch_len, 0.99, 0.95)
+                                steps_per_epoch, 0.99, 0.95)
         self.logger = EpochLogger(output_dir=output_dir,
                                   output_fname=output_fname, exp_name=None)
         agent.build_graph(env.observation_space, env.action_space)
