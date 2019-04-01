@@ -19,11 +19,14 @@ def test_kwargs_to_exp_name_strs():
 
 def test_kwargs_to_exp_name():
     """ test converting kwargs to exp name """
-    ret = log_utils.kwargs_to_exp_name('test_exp', 0, {'hidden_sizes': (32,)})
-    assert ret == 'test_exp_hid32_s0'
-    ret = log_utils.kwargs_to_exp_name('test_exp', 0, {})
-    assert ret == 'test_exp_s0'
+    ret = log_utils.kwargs_to_exp_name('test_exp', {'hidden_sizes': (32,)})
+    assert ret == 'test_exp_hid32'
+    ret = log_utils.kwargs_to_exp_name('test_exp', {})
+    assert ret == 'test_exp'
     ret = log_utils.kwargs_to_exp_name(
-            'test', 0, {'env_name': 'cartpole-v0', 'hidden_sizes': (64,64),
+            'test', {'env_name': 'cartpole-v0', 'hidden_sizes': (64,64),
                         'activation': tf.nn.relu})
-    assert ret == 'test_cartpole-v0_hid64-64_relu_s0'
+    assert ret == 'test_cartpole-v0_hid64-64_relu'
+    ret = log_utils.kwargs_to_exp_name(
+            '', {'env_name': 'cartpole-v0'})
+    assert ret == 'cartpole-v0'

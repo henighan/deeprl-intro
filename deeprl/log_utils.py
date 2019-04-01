@@ -22,8 +22,8 @@ def tf_activation_to_str(activation):
     return str(activation).split()[1]
 
 
-def kwargs_to_exp_name(prefix, seed, kwargs):
+def kwargs_to_exp_name(prefix, kwargs):
     """ produce experiment name from run kwargs """
     exp_name_strs = kwargs_to_exp_name_strs(kwargs)
-    after_prefix = '_' if exp_name_strs else ''
-    return prefix + after_prefix + '_'.join(exp_name_strs) + '_s{}'.format(seed)
+    after_prefix = '_' if (exp_name_strs and prefix) else ''
+    return prefix + after_prefix + '_'.join(exp_name_strs)
