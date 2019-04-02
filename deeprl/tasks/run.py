@@ -44,28 +44,29 @@ def maybe_run_single_seed(exp_name, implementation, epochs, seed, kwargs):
     
 
 def run(exp_name, implementation, seed, **kwargs):
+    output_dir = log_utils.output_dir_from_kwargs(
+        exp_name, implementation, kwargs, seed=seed)
     if implementation == 'spinup':
-        spinup_datadir = './data/spinup'
-        run_spinup(exp_name, spinup_datadir, seed, **kwargs)
+        # spinup_datadir = './data/spinup'
+        run_spinup(exp_name, seed,
+                   output_dir=output_dir, **kwargs)
     elif implementation == 'tom':
-        output_dir = log_utils.output_dir_from_kwargs(
-            exp_name, implementation, kwargs, seed=seed)
         print('saving to {}'.format(output_dir))
         run_tom(output_dir, seed, **kwargs)
 
 
-def run_spinup(exp_name, spinup_datadir, seed,
+def run_spinup(exp_name, seed, output_dir=None,
                env_name='Swimmer-v2', hidden_sizes=(64,64),
-               activation=tf.tanh, steps_per_epoch=4000,
-               epochs=50, num_cpu=2):
-    eg = ExperimentGrid(name=exp_name)
-    eg.add('env_name', env_name, '', True)
-    eg.add('seed', [seed])
-    eg.add('epochs', epochs)
-    eg.add('steps_per_epoch', steps_per_epoch)
-    eg.add('ac_kwargs:hidden_sizes', hidden_sizes, 'hid')
-    eg.add('ac_kwargs:activation', activation, '')
-    eg.run(vpg, num_cpu=num_cpu, data_dir=spinup_datadir)
+               activation=tf.tanh, num_cpu=2, **kwargs):
+    logger_kwargs = {'exp_name': exp_name, 'output_dir': output_dir}
+    ac_kwargs = {'hidden_sizes': hidden_sizes, 'activation': activation}
+    tf.reset_default_graph()
+    vpg(get_env_fn(env_name), ac_kwargs=ac_kwargs,
+        logger_kwargs=logger_kwargs, seed=seed, **kwargs)
+
+
+def get_env_fn(env_name):
+    return lambda: gym.make(env_name)
 
 
 def run_tom(output_dir, seed,
