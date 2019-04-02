@@ -118,7 +118,7 @@ def benchmark(exp_name, num_runs, **kwargs):
     maybe_run(exp_name, num_runs, imps, **kwargs)
     # ensure we don't have the epochs kwarg twice
     plotting.deeprlplot(
-        exp_name, imps, num_runs=num_runs,
+        exp_name, imps, num_runs=num_runs, benchmark=True,
         epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
 
 
