@@ -46,7 +46,7 @@ def cli():
               help='Activation to use in actor-critic MLPs',
               show_default=True)
 def run(exp_name, implementation, num_runs, **kwargs):
-    """ plot Logging Results """
+    """ Run experiment and plot Episode Return """
     click.echo('exp name: {}'.format(exp_name))
     click.echo('implementation: {}'.format(implementation))
     click.echo('num_runs: {}'.format(num_runs))
@@ -92,9 +92,6 @@ def plot(exp_name, implementation, value, **kwargs):
 @cli.command("benchmark")
 @click.option('--exp_name', '-exp' ,default='',
               help='Prefix added to experiment name')
-@click.option('--implementation', '-imp' ,default='tom',
-              help='Prefix added to experiment name',
-              type=click.Choice(['tom', 'spinup']))
 @click.option('--num_runs', '-n', default=3,
               help='Number of different random seeds to run',
               show_default=True)
@@ -110,14 +107,20 @@ def plot(exp_name, implementation, value, **kwargs):
 @click.option('--activation' ,default='tanh',
               help='Activation to use in actor-critic MLPs',
               show_default=True)
-def benchmark(exp_name, implementation, num_runs, **kwargs):
-    """ plot Logging Results """
+def benchmark(exp_name, num_runs, **kwargs):
+    """ Benchmart tom's implementation against spinup and plot """
+    imps = ['tom', 'spinup']
     click.echo('exp name: {}'.format(exp_name))
-    click.echo('implementation: {}'.format(implementation))
     click.echo('num_runs: {}'.format(num_runs))
+    epochs = kwargs['epochs']
     kwargs = process_cli_kwargs(kwargs)
     click.echo('kwargs: {}'.format(kwargs))
-    task_run(exp_name, implementation, num_runs, **kwargs)
+    maybe_run(exp_name, num_runs, imps, **kwargs)
+    # ensure we don't have the epochs kwarg twice
+    plotting.deeprlplot(
+        exp_name, imps, num_runs=num_runs,
+        epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
+
 
 if __name__ == "__main__":
     cli()

@@ -34,6 +34,7 @@ def deeprlplot(exp_name, implementations, num_runs=None,
                 tmp_df = tmp_df[tmp_df['Epoch'] < epochs]
             data = pd.concat([tmp_df, data])
         plt.plot(data['TotalEnvInteracts'], data[value], 'o', label=imp)
+    plt.legend()
     plt.xlabel('TotalEnvInteracts')
     plt.ylabel(value)
     plt.show()
