@@ -25,7 +25,6 @@ class Learner():
     def play_episode(self):
         reset_return = self.env.reset()
         obs, rew = reset_return, 0
-        # obs, rew = reset_return[0], reset_return[1]
         ep_len, ep_ret, is_term_state = 0, 0, False
         while (not self.buffer.full) and (not is_term_state):
             act, val_t, logp_t = self.agent.step(obs)
