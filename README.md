@@ -13,7 +13,7 @@ and waiting produces this
 
 ![alt text](imgs/invpen_6432_10_benchmark.png)
 
-With the above line, we have run my VPG implementation agains OpenAI's for 10 different random seeds. The top plot shows the history of the episode return. The bottom shows the change in the episode return over training for each implementation. To get a rough idea if the change in the return is meaningfully different between two implementations, I use student's t-test for independent samples to calculate the p-value shown.
+With the above line, we have run my VPG implementation against OpenAI's for 10 different random seeds. The top plot shows the history of the episode return. The bottom shows the change in the episode return over training for each implementation. To get a rough idea if the change in the return is meaningfully different between two implementations, I use student's t-test for independent samples to calculate the p-value shown.
 
 I used [click](https://click.palletsprojects.com/en/7.x/) to make this nifty command-line-tool, which automatically gives you `--help` flags
 
@@ -64,7 +64,16 @@ Options:
 git clone git@github.com:henighan/deeprl-intro.git
 cd deeprl-intro
 ./install.sh
+source .work/bin/activave
+deeprl --help
 ```
+
+## How do I test this?
+```bash
+py.test tests
+```
+
+If you want to use the mujoco environments, you will also need to follow the instructions [here](https://spinningup.openai.com/en/latest/user/installation.html#installing-mujoco-optional).
 
 ## Other notes
 
