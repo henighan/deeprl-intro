@@ -7,11 +7,11 @@ The primary use of this repo is to store my attempts at deep reinforcement-learn
 
 Running this
 ```bash
-$ deeprl benchmark -hid "(32,32)" --env_name InvertedPendulum-v2 -n 10
+$ deeprl benchmark -hid "(64,32)" --env_name InvertedPendulum-v2 -n 10
 ```
 and waiting produces this
 
-![alt text][imgs/invpen_3232_10_benchmark.png]
+![alt text](imgs/invpen_6432_10_benchmark.png)
 
 With the above line, we have run my VPG implementation agains OpenAI's for 10 different random seeds. The top plot shows the history of the episode return. The bottom shows the change in the episode return over training for each implementation. To get a rough idea if the change in the return is meaningfully different between two implementations, I use student's t-test for independent samples to calculate the p-value shown.
 
