@@ -108,7 +108,7 @@ def plot(exp_name, implementation, value, **kwargs):
               help='Activation to use in actor-critic MLPs',
               show_default=True)
 def benchmark(exp_name, num_runs, **kwargs):
-    """ Benchmart tom's implementation against spinup and plot """
+    """ Benchmark tom's implementation against spinup and plot """
     imps = ['tom', 'spinup']
     click.echo('exp name: {}'.format(exp_name))
     click.echo('num_runs: {}'.format(num_runs))

@@ -28,12 +28,12 @@ Options:
   --help  Show this message and exit.
 
 Commands:
-  benchmark  Benchmart tom's implementation against spinup and plot
+  benchmark  Benchmark tom's implementation against spinup and plot
   plot       plot Logging Results
   run        Run experiment and plot Episode Return
 ```
 
-If we then want to know how to use "plot", we can get help on that as well
+If we then want to know how to use "run", we can get help on that as well
 
 ```bash
 $ deeprl run --help
