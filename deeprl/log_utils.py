@@ -1,4 +1,5 @@
 """ Logging utilities """
+import os
 
 
 def kwargs_to_exp_name_strs(kwargs):
@@ -27,3 +28,25 @@ def kwargs_to_exp_name(prefix, kwargs):
     exp_name_strs = kwargs_to_exp_name_strs(kwargs)
     after_prefix = '_' if (exp_name_strs and prefix) else ''
     return prefix + after_prefix + '_'.join(exp_name_strs)
+
+
+def output_dir_from_kwargs(prefix, implementation, kwargs, seed=None):
+    exp_name = kwargs_to_exp_name(prefix, kwargs)
+    output_dir = os.path.join('./data/{}'.format(implementation),
+                              exp_name, exp_name)
+    return output_dir + '_s{}'.format(seed) if (seed is not None) else output_dir
+
+
+def num_run_epochs(prefix, implementation, seed, kwargs):
+    """ returns the number of epochs that have been run with this
+    configuration """
+    output_dir_base = output_dir_from_kwargs(
+        prefix, implementation, kwargs)
+    path = os.path.join(output_dir_base + '_s{}'.format(seed), 'progress.txt')
+    if not os.path.exists(path):
+        return 0
+    linecount = -1 # subtract one for header
+    with open(path, 'r') as fileobj:
+        for line in fileobj:
+            linecount += 1
+    return linecount

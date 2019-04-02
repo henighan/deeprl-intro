@@ -30,3 +30,12 @@ def test_kwargs_to_exp_name():
     ret = log_utils.kwargs_to_exp_name(
             '', {'env_name': 'cartpole-v0'})
     assert ret == 'cartpole-v0'
+
+
+def test_output_dir_from_kwargs():
+    """ test converting kwargs to output_dir """
+    ret = log_utils.output_dir_from_kwargs('', 'tom', {'hidden_sizes': (32,)})
+    assert ret == './data/tom/hid32/hid32'
+    ret = log_utils.output_dir_from_kwargs('', 'tom', {'hidden_sizes': (32,)},
+                                           seed=0)
+    assert ret == './data/tom/hid32/hid32_s0'
