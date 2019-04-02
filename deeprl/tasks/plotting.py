@@ -23,7 +23,7 @@ def deeprlplot(exp_name, implementations, num_runs=None,
         fig, ax0 = plt.subplots()
     for imp in implementations:
         data = get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs)
-        ax0.plot(data['TotalEnvInteracts'], data[value], 'o', label=imp)
+        ax0.plot(data['TotalEnvInteracts'], data[value], '.', label=imp)
         if benchmark:
             tmp = calculate_delta_ep_ret(data, epochs)
             tmp['imp'] = imp
@@ -35,6 +35,7 @@ def deeprlplot(exp_name, implementations, num_runs=None,
             delta_eprets[~tom_inds]['DeltaEpRet'])
         sns.stripplot(x='imp', y='DeltaEpRet', data=delta_eprets, ax=ax1)
         ax1.set_title('p-val {}'.format(p_val))
+        ax1.set_xlabel('implementation')
     ax0.legend()
     ax0.set_xlabel('TotalEnvInteracts')
     ax0.set_ylabel(value)
