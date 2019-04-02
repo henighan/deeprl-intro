@@ -3,7 +3,7 @@ import click
 import tensorflow as tf
 import logging
 from deeprl.tasks.run import run as task_run, maybe_run
-from deeprl.tasks.plotting import plot as task_plot
+from deeprl.tasks import plotting
 from deeprl.common import DEFAULT_KWARGS, LOGGER_NAME
 logger = logging.getLogger(LOGGER_NAME)
 logger.setLevel(logging.DEBUG)
@@ -50,10 +50,15 @@ def run(exp_name, implementation, num_runs, **kwargs):
     click.echo('exp name: {}'.format(exp_name))
     click.echo('implementation: {}'.format(implementation))
     click.echo('num_runs: {}'.format(num_runs))
+    epochs = kwargs['epochs']
     kwargs = process_cli_kwargs(kwargs)
     click.echo('kwargs: {}'.format(kwargs))
     # task_run(exp_name, implementation, num_runs, **kwargs)
-    maybe_run(exp_name, num_runs, implementation=implementation, **kwargs)
+    maybe_run(exp_name, num_runs, [implementation], **kwargs)
+    # ensure we don't have the epochs kwarg twice
+    plotting.deeprlplot(
+        exp_name, [implementation], num_runs=num_runs,
+        epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
 
 
 @cli.command("plot")
@@ -62,6 +67,8 @@ def run(exp_name, implementation, num_runs, **kwargs):
 @click.option('--implementation', '-imp' ,default='tom',
               help="Which implementation to run, spinup's or Tom's",
               type=click.Choice(['tom', 'spinup']))
+@click.option('--value', '-v', default='AverageEpRet',
+              help='Value to plot', show_default=True)
 @click.option('--env_name', '-env', default='Swimmer-v2',
               help='Environment name', show_default=True)
 @click.option('--hidden_sizes', '-hid', default='(64,64)',
@@ -70,13 +77,16 @@ def run(exp_name, implementation, num_runs, **kwargs):
 @click.option('--activation', default='tanh',
               help='Activation to use in actor-critic MLPs',
               show_default=True)
-def plot(exp_name, implementation, **kwargs):
+def plot(exp_name, implementation, value, **kwargs):
     """ plot Logging Results """
     click.echo('exp name: {}'.format(exp_name))
     click.echo('implementation: {}'.format(implementation))
     kwargs = process_cli_kwargs(kwargs)
     click.echo('kwargs: {}'.format(kwargs))
-    task_plot(exp_name, implementation, **kwargs)
+    plotting.deeprlplot(
+        exp_name, [implementation],
+        epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']),
+        value=value, **kwargs)
 
 
 @cli.command("benchmark")

@@ -1,5 +1,6 @@
 """ Logging utilities """
 import os
+import glob
 
 
 def kwargs_to_exp_name_strs(kwargs):
@@ -50,3 +51,14 @@ def num_run_epochs(prefix, implementation, seed, kwargs):
         for line in fileobj:
             linecount += 1
     return linecount
+
+
+def seeds(num_runs):
+    for run_no in range(num_runs):
+        yield 10*run_no
+
+
+def already_run_seeds(prefix, implementation, kwargs):
+    base_outdir = output_dir_from_kwargs(prefix, implementation, kwargs)
+    return [int(outdir.split('s')[-1])
+            for outdir in glob.glob(base_outdir + '_s*')]

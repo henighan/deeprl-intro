@@ -12,14 +12,13 @@ import logging
 logger = logging.getLogger('deeprl')
 
 
-def maybe_run(exp_name, num_runs, implementation=None, **kwargs):
+def maybe_run(exp_name, num_runs, implementations, **kwargs):
     """ Run maybe_run_single_seed for num_runs different seeds. If
     implementation is not specified, run both tom and spinup implementations
     """
     epochs = kwargs.get('epochs', DEFAULT_KWARGS['epochs'])
-    imps = [implementation] if implementation else ['spinup', 'tom']
     for ii in range(num_runs):
-        for imp in imps:
+        for imp in implementations:
             seed = 10*ii
             maybe_run_single_seed(exp_name, imp, epochs, seed, kwargs)
 
