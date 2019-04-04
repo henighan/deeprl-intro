@@ -12,7 +12,7 @@ class TestTfUtils(tf.test.TestCase):
         with self.cached_session() as sess:
             var = tf.get_variable('test', shape=[4, 5], trainable=True)
             ret = tf_utils.trainable_count()
-            assert sess.run(ret) == 4*5
+            assert ret == 4*5
 
     def test_mlp_smoke(self):
         """ Smoke test mlp """

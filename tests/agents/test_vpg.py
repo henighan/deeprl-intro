@@ -33,7 +33,7 @@ class TestVPG(tf.test.TestCase):
             obs_ph, hidden_sizes=(4,), activation=None)
         n_params = (obs_dim+1)*4 + (4 + 1)*1
         with self.cached_session() as sess:
-            ret_n_params = sess.run(tf_utils.trainable_count(scope='val'))
+            ret_n_params = tf_utils.trainable_count(scope='val')
             sess.run(tf.global_variables_initializer())
             sess_val = sess.run(val, feed_dict={obs_ph: obs})
         self.assertEqual(n_params, ret_n_params)

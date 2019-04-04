@@ -85,7 +85,7 @@ class VPG():
     @staticmethod
     def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
         if isinstance(act_space, Box):
-            with tf.variable_scope('policy'):
+            with tf.variable_scope('pi'):
                 pi, logp, logp_pi = mlp_gaussian_policy(
                     obs_ph, act_ph, hidden_sizes=hidden_sizes,
                     activation=activation, action_space=act_space)

@@ -49,6 +49,9 @@ def test_learner_smoke(mocker, continuous_env):
     learner = Learner(mocker.Mock(), continuous_env, steps_per_epoch=1000,
                       epochs=4, output_dir='tests/tmp_test_outputs',
                       exp_name='learner_test')
+    learner.logger.save_config = mocker.Mock()
+    learner.logger.setup_tf_saver = mocker.Mock()
+    learner.logger.save_state = mocker.Mock()
     learner.agent.step.return_value = ([0], random.random(),
                                             random.random())
     learner.agent.train.return_value = (random.random(),

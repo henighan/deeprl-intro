@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 from deeprl.replay_buffer import Buffer
+from deeprl import tf_utils
 from spinup.utils.logx import EpochLogger
 import time
 
@@ -11,15 +12,22 @@ class Learner():
     def __init__(self, agent, env, steps_per_epoch=1000, epochs=50, seed=0,
                  output_dir=None, output_fname='progress.txt',
                  exp_name=None, gamma=0.99, lam=0.97):
-        self.env, self.agent = env, agent
         self.epoch_len, self.n_epochs = steps_per_epoch, epochs
-        self.buffer = Buffer(env.observation_space.shape[0],
-                                env.action_space.shape[0],
-                                steps_per_epoch, gamma, lam)
         self.logger = EpochLogger(output_dir=output_dir,
                                   output_fname=output_fname, exp_name=None)
+        self.logger.save_config(locals())
+        self.env, self.agent = env, agent
+        self.buffer = Buffer(env.observation_space.shape[0],
+                             env.action_space.shape[0],
+                             steps_per_epoch, gamma, lam)
         agent.build_graph(env.observation_space, env.action_space)
-        tf.set_random_seed(seed)
+        self.logger.setup_tf_saver(
+            agent.sess, inputs={'x': agent.placeholders.get('obs')},
+            outputs={'pi': agent.pi, 'v': agent.val})
+        var_counts = tuple(tf_utils.trainable_count(scope)
+                           for scope in ['pi', 'v'])
+        self.logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n'
+                        % var_counts)
         np.random.seed(seed)
 
     def play_episode(self):
@@ -57,6 +65,8 @@ class Learner():
             self.play_epoch()
             self.train_epoch()
             self.log_epoch(epoch, start_time)
+            if (epoch % 10 == 0) or (epoch == self.n_epochs - 1):
+                self.logger.save_state({'env': self.env}, None)
 
     def log_epoch(self, epoch, start_time):
         """ Log info about epoch """

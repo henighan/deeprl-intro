@@ -1,12 +1,13 @@
 """ Tensorflow utility functions """
 import tensorflow as tf
+import numpy as np
 
 
 def trainable_count(scope=''):
     """ returns the number of trainable parameters """
-    return tf.reduce_sum([tf.reduce_prod(var.get_shape())
-                          for var in tf.trainable_variables()
-                          if scope in var.name])
+    return sum([np.prod(var.shape.as_list())
+                for var in tf.trainable_variables()
+                if scope in var.name])
 
 
 def mlp(x, hidden_sizes=(32,), activation=tf.tanh, output_activation=None):
