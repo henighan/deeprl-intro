@@ -1,7 +1,7 @@
 """ Replay Buffer """
 import numpy as np
 from deeprl.utils.math import (advantage_function, discount_cumsum,
-                               combined_shape)
+                               combined_shape, rewards_to_go)
 
 
 class ReplayBuffer:
@@ -35,7 +35,8 @@ class ReplayBuffer:
             lam=self.lam, last_val=last_val)
         # the next line computes rewards-to-go, to be targets
         # for the value function
-        self.buf['ret'] = discount_cumsum(trajectory_rews, self.gamma)[:-1]
+        self.buf['ret'][path_slice] = rewards_to_go(
+            trajectory_rews, gamma=self.gamma, last_val=last_val)
         self.path_start_idx = self.ptr
 
     def get(self):

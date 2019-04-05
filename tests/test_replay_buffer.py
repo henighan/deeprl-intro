@@ -46,6 +46,8 @@ def test_finish_path_smoke(replay_buffer):
     for _ in range(3):
         replay_buffer.store(to_buffer)
     replay_buffer.finish_path()
+    assert replay_buffer.buf['adv'].shape == (replay_buffer.max_size,)
+    assert replay_buffer.buf['ret'].shape == (replay_buffer.max_size,)
 
 
 def test_get(size, replay_buffer):

@@ -73,3 +73,17 @@ def test_advantage_function_smoke():
            + rewards[t+2]*gamma**2 + last_val*gamma**3)
     At_gae = (1 - lam)*(At1 + lam*At2 + lam**2*At3/(1-lam))
     assert ret[t] == pytest.approx(At_gae)
+
+
+def test_rewards_to_go():
+    """ smoke test rewards-to-go """
+    rewards = np.array([2.3, 4.5, 8.9, 0.3])
+    last_val = -1.2
+    gamma = 0.9
+    ret = math.rewards_to_go(rewards, gamma=gamma, last_val=last_val)
+    # calcualte by hand the rewards-to-go for a particular t
+    t = 2
+    rew_2go = (rewards[t]
+               + gamma*rewards[t+1]
+               + last_val*gamma**2)
+    assert rew_2go == ret[t]

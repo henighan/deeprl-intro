@@ -33,3 +33,10 @@ def combined_shape(length, value):
     if np.isscalar(value):
         return (length,)
     return (length, *value.shape)
+
+
+def rewards_to_go(trajectory_rewards, gamma=0.99, last_val=0):
+    """ Calculate the trajectory rewards-to-go. Typically, these are used as
+    targets for the value function """
+    rews = np.append(trajectory_rewards, last_val)
+    return discount_cumsum(rews, discount=gamma)[:-1]
