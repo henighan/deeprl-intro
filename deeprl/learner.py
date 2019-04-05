@@ -58,7 +58,7 @@ class Learner():
 
     def train_epoch(self):
         pi_loss, v_loss, delta_pi_loss, delta_v_loss = self.agent.train(
-            *self.buffer.get())
+            self.buffer.get())
         self.logger.store(LossPi=pi_loss, LossV=v_loss,
                           DeltaLossPi=delta_pi_loss, DeltaLossV=delta_v_loss)
 

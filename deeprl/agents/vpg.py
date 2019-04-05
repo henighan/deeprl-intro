@@ -26,16 +26,16 @@ class VPG():
         act, val_t, logp_t = self.sess.run(
             (self.pi, self.val, self.logp_pi), feed_dict=feed_dict)
         to_buffer = {'act': act[0], 'val': val_t[0], 'logp_t': logp_t[0]}
-        to_log = {'VVals': val_t[0]}
+        to_log = {'VVals': val_t[0], 'Logp': logp_t[0]}
         return to_buffer, to_log
 
-    def train(self, obs_buf, act_buf, adv_buf, ret_buf, logp_buf):
+    def train(self, buf):
         """ Train after epoch """
-        feed_dict = {self.placeholders['obs']: obs_buf,
-                     self.placeholders['act']: act_buf,
-                     self.placeholders['adv']: adv_buf,
-                     self.placeholders['ret']: ret_buf}
+        ph_keys = ['obs', 'act', 'adv', 'ret']
+        feed_dict = {self.placeholders[key]: buf[key] for key in ph_keys}
         # calculate losses before training
+        # for key in ph_keys:
+        #     print('{}: {}'.format(key, buf[key].shape))
         old_pi_loss, old_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
         # update policy
