@@ -19,11 +19,15 @@ class VPG():
         self.placeholders = {}
 
     def step(self, obs):
-        """ sample action given observation of environment """
+        """ sample action given observation of environment. returns two
+        dictionaries. The first conains values we want stored in the buffer.
+        The second is values we want sent to the log """
         feed_dict = {self.placeholders['obs']: obs.reshape(1, -1)}
         act, val_t, logp_t = self.sess.run(
             (self.pi, self.val, self.logp_pi), feed_dict=feed_dict)
-        return act[0], val_t[0], logp_t[0]
+        to_buffer = {'act': act[0], 'val': val_t[0], 'logp_t': logp_t[0]}
+        to_log = {'VVals': val_t[0]}
+        return to_buffer, to_log
 
     def train(self, obs_buf, act_buf, adv_buf, ret_buf, logp_buf):
         """ Train after epoch """
