@@ -1,10 +1,11 @@
 """ RL Learner, for playing out episodes and training """
-import tensorflow as tf
+import time
+
 import numpy as np
-from deeprl.replay_buffer import Buffer
+
+from deeprl.replay_buffer import ReplayBuffer
 from deeprl import tf_utils
 from spinup.utils.logx import EpochLogger
-import time
 
 
 class Learner():
@@ -14,12 +15,11 @@ class Learner():
                  exp_name=None, gamma=0.99, lam=0.97):
         self.epoch_len, self.n_epochs = steps_per_epoch, epochs
         self.logger = EpochLogger(output_dir=output_dir,
-                                  output_fname=output_fname, exp_name=None)
+                                  output_fname=output_fname,
+                                  exp_name=exp_name)
         self.logger.save_config(locals())
         self.env, self.agent = env, agent
-        self.buffer = Buffer(env.observation_space.shape[0],
-                             env.action_space.shape[0],
-                             steps_per_epoch, gamma, lam)
+        self.buffer = ReplayBuffer(steps_per_epoch, gamma=gamma, lam=lam)
         agent.build_graph(env.observation_space, env.action_space)
         self.logger.setup_tf_saver(
             agent.sess, inputs={'x': agent.placeholders.get('obs')},
@@ -35,17 +35,20 @@ class Learner():
         obs, rew = reset_return, 0
         ep_len, ep_ret, is_term_state = 0, 0, False
         while (not self.buffer.full) and (not is_term_state):
-            act, val_t, logp_t = self.agent.step(obs)
-            self.logger.store(VVals=val_t, Logp=logp_t)
-            self.buffer.store(obs, act, rew, val_t, logp_t)
+            # environment variables to store in buffer
+            env_to_buffer = dict(obs=obs, rew=rew)
+            # Take agent step, return values to store in buffer, and in logs
+            agent_to_buffer, agent_to_log = self.agent.step(obs)
+            self.buffer.store({**env_to_buffer, **agent_to_buffer})
+            self.logger.store(**agent_to_log)
             ep_len += 1
             ep_ret += rew
-            obs, rew, is_term_state, _ = self.env.step(act)
+            obs, rew, is_term_state, _ = self.env.step(agent_to_buffer['act'])
         if is_term_state:
             self.logger.store(EpRet=ep_ret, EpLen=ep_len)
         else:
             # if trajectory didn't reach terminal state, bootstrap to target
-            _, rew, _ = self.agent.step(obs)
+            rew = self.agent.step(obs)[0]['val']
         self.buffer.finish_path(rew) # calculate advantage
         return ep_len, ep_ret
 

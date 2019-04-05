@@ -13,4 +13,6 @@ def continuous_env():
 
 @pytest.fixture
 def learner(mocker, continuous_env):
+    mocker.patch('deeprl.learner.EpochLogger.save_config')
+    mocker.patch('deeprl.learner.EpochLogger.log')
     return Learner(mocker.Mock(), env=continuous_env)
