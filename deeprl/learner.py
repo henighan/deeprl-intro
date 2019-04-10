@@ -2,6 +2,7 @@
 import time
 
 import numpy as np
+import tensorflow as tf
 
 from deeprl.replay_buffer import ReplayBuffer
 from deeprl import tf_utils
@@ -9,6 +10,9 @@ from spinup.utils.logx import EpochLogger
 
 
 class Learner():
+    """ Deep RL Learner, plays out episodes and epochs between the environment
+    and the agent. At the end of an epoch, it invokes agent training. Also
+    handles all logging """
 
     def __init__(self, agent, env, steps_per_epoch=1000, epochs=50, seed=0,
                  output_dir=None, output_fname='progress.txt',
@@ -17,18 +21,21 @@ class Learner():
         self.logger = EpochLogger(output_dir=output_dir,
                                   output_fname=output_fname,
                                   exp_name=exp_name)
-        self.logger.save_config(locals())
+        print('locals')
+        for key, val in locals().items():
+            print('{}: {}'.format(key, len(str(val))))
+        # self.logger.save_config(locals())
         self.env, self.agent = env, agent
         self.buffer = ReplayBuffer(steps_per_epoch, gamma=gamma, lam=lam)
-        agent.build_graph(env.observation_space, env.action_space)
-        self.logger.setup_tf_saver(
-            agent.sess, inputs={'x': agent.placeholders.get('obs')},
-            outputs={'pi': agent.pi, 'v': agent.val})
+        saver_kwargs = agent.build_graph(env.observation_space,
+                                         env.action_space)
+        self.logger.setup_tf_saver(**saver_kwargs)
         var_counts = tuple(tf_utils.trainable_count(scope)
                            for scope in ['pi', 'v'])
         self.logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n'
                         % var_counts)
         np.random.seed(seed)
+        tf.set_random_seed(seed)
 
     def play_episode(self):
         reset_return = self.env.reset()
@@ -57,10 +64,9 @@ class Learner():
             self.play_episode()
 
     def train_epoch(self):
-        pi_loss, v_loss, delta_pi_loss, delta_v_loss = self.agent.train(
+        to_log = self.agent.train(
             self.buffer.get())
-        self.logger.store(LossPi=pi_loss, LossV=v_loss,
-                          DeltaLossPi=delta_pi_loss, DeltaLossV=delta_v_loss)
+        self.logger.store(**to_log)
 
     def learn(self):
         for epoch in range(self.n_epochs):
@@ -76,12 +82,8 @@ class Learner():
         self.logger.log_tabular('Epoch', epoch)
         self.logger.log_tabular('EpRet', with_min_and_max=True)
         self.logger.log_tabular('EpLen', average_only=True)
-        self.logger.log_tabular('VVals', with_min_and_max=True)
-        self.logger.log_tabular('Logp', with_min_and_max=True)
         self.logger.log_tabular('TotalEnvInteracts', (epoch+1)*self.epoch_len)
-        self.logger.log_tabular('LossPi', average_only=True)
-        self.logger.log_tabular('LossV', average_only=True)
-        self.logger.log_tabular('DeltaLossPi', average_only=True)
-        self.logger.log_tabular('DeltaLossV', average_only=True)
         self.logger.log_tabular('Time', time.time()-start_time)
+        for column_name, kwargs in self.agent.log_tabular_kwargs.items():
+            self.logger.log_tabular(column_name, **kwargs)
         self.logger.dump_tabular()

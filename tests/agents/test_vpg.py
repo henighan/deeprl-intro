@@ -68,7 +68,7 @@ class TestVPG(tf.test.TestCase):
         logp = tf.get_variable(
             'adv', dtype=tf.float32, trainable=True,
             initializer=batch_size*[0.])
-        loss, train_op = self.vpg.build_policy_loss(logp, adv_ph, lr=1e-3)
+        loss, train_op = self.vpg.build_policy_loss(logp, adv_ph, learning_rate=1e-3)
         with self.cached_session() as sess:
             sess.run(tf.global_variables_initializer())
             old_loss = sess.run(loss, feed_dict={adv_ph: adv})
