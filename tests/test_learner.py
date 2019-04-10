@@ -3,22 +3,27 @@ import os
 import random
 import time
 
+import pytest
+import numpy as np
+
 from deeprl.learner import Learner
 
 
-def test_learner_init_smoke(mocker, continuous_env):
-    """ smoke test learner init """
-    learner = Learner(mocker.Mock(), env=continuous_env)
+@pytest.fixture
+def agent_step_ret():
+    return ({'act': np.array([0]), 'val': 0, 'logp': 0},
+            {'VVals': 0, 'Logp': 0})
 
 
-def test_play_episode_buffer_full(mocker, learner):
+def test_play_episode_buffer_full(mocker, learner, agent_step_ret):
     """ test play_episode when the buffer fills up """
     learner.logger = mocker.Mock()
     # mock buffer to be full after two steps
-    full_mock = mocker.patch('deeprl.replay_buffer.Buffer.full',
+    full_mock = mocker.patch('deeprl.replay_buffer.ReplayBuffer.full',
                              new_callable=mocker.PropertyMock)
-    full_mock.side_effect = [False, False, True]
-    learner.agent.step.return_value = ([0], 0, 0)
+    full_mock.side_effect = [False, False, False, False, True]
+    # learner.agent.step.return_value = ([0], 0, 0)
+    learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
     assert ret_ep_len == 2
     learner.logger.store.assert_called_with(Logp=0, VVals=0)
@@ -26,7 +31,7 @@ def test_play_episode_buffer_full(mocker, learner):
     assert learner.buffer.ptr == 2
 
 
-def test_play_episode_episode_ends(mocker, learner):
+def test_play_episode_episode_ends(mocker, learner, agent_step_ret):
     """ test play_episode when the episode terminates """
     learner.logger = mocker.Mock()
     # episode reaches termial state on fourth step
@@ -34,7 +39,7 @@ def test_play_episode_episode_ends(mocker, learner):
                                                 ([0], 0, False, None),
                                                 ([0], 0, False, None),
                                                 ([0], 0, True, None)])
-    learner.agent.step.return_value = ([0], 0, 0)
+    learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
     print(learner.logger.store.call_args_list)
     assert ret_ep_len == 4
@@ -43,21 +48,24 @@ def test_play_episode_episode_ends(mocker, learner):
     assert len(learner.logger.store.call_args_list) == 5
 
 
-def test_learner_smoke(mocker, continuous_env):
+def test_learner_smoke(mocker, continuous_env, agent_step_ret):
     """ Give it a a test run witha mock agent, see that is produces logs """
     output_dir, exp_name = 'tests/tmp_test_outputs', 'learner_test'
-    learner = Learner(mocker.Mock(), continuous_env, steps_per_epoch=1000,
+    agent = mocker.Mock()
+    agent.build_graph.return_value = {'saver': 'config'}
+    mocker.patch('deeprl.learner.EpochLogger.setup_tf_saver')
+    learner = Learner(agent, continuous_env, steps_per_epoch=1000,
                       epochs=4, output_dir='tests/tmp_test_outputs',
                       exp_name='learner_test')
     learner.logger.save_config = mocker.Mock()
     learner.logger.setup_tf_saver = mocker.Mock()
     learner.logger.save_state = mocker.Mock()
-    learner.agent.step.return_value = ([0], random.random(),
-                                            random.random())
-    learner.agent.train.return_value = (random.random(),
-                                        random.random(),
-                                        -0.01*random.random(),
-                                        -0.01*random.random(),)
+    learner.agent.step.return_value = agent_step_ret
+    learner.agent.log_tabular_kwargs = {}
+    learner.agent.train.return_value = {'LossPi': random.random(),
+                                        'LossV': random.random(),
+                                        'DeltaLossPi': -0.01*random.random(),
+                                        'DeltaLossV': -0.01*random.random()}
     output_path = os.path.join(output_dir, 'progress.txt')
     start_time = time.time()
     learner.learn()
