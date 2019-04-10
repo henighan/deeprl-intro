@@ -38,9 +38,8 @@ class Learner():
         tf.set_random_seed(seed)
 
     def play_episode(self):
-        reset_return = self.env.reset()
-        obs, rew = reset_return, 0
-        ep_len, ep_ret, is_term_state = 0, 0, False
+        obs = self.env.reset()
+        rew, ep_len, ep_ret, is_term_state = 0, 0, 0, False
         while (not self.buffer.full) and (not is_term_state):
             # environment variables to store in buffer
             env_to_buffer = dict(obs=obs, rew=rew)
