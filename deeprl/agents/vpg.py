@@ -1,7 +1,8 @@
 """ Vanilla Policy Gradient Agent """
 import tensorflow as tf
-from gym.spaces import Box
+from gym.spaces import Box, Discrete
 from deeprl.policies.gaussian import mlp_gaussian_policy
+from deeprl.policies.categorical import mlp_categorical_policy
 from deeprl.tf_utils import mlp, tfph
 
 
@@ -101,7 +102,14 @@ class VPG():
     def create_placeholders(self, obs_space, act_space):
         """ Build the placeholders required for this agent """
         self.placeholders['obs'] = tfph(obs_space.shape[-1], name='obs')
-        self.placeholders['act'] = tfph(act_space.shape[-1], name='act')
+        if isinstance(act_space, Box):
+            self.placeholders['act'] = tfph(act_space.shape[-1], name='act')
+        elif isinstance(act_space, Discrete):
+            self.placeholders['act'] = tf.placeholder(
+                dtype=tf.int64, shape=[None], name='act')
+        else:
+            raise NotImplementedError(
+                'action space {} not implemented'.format(act_space))
         for name in ('ret', 'adv'):
             self.placeholders[name] = tfph(None, name=name)
 
@@ -122,8 +130,14 @@ class VPG():
                     obs_ph, act_ph, hidden_sizes=hidden_sizes,
                     activation=activation, action_space=act_space)
             return pi, logp, logp_pi
-        raise NotImplementedError(
-            "Only Policies for Box action space implemented")
+        if isinstance(act_space, Discrete):
+            with tf.variable_scope('pi'):
+                pi, logp, logp_pi = mlp_categorical_policy(
+                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
+                    activation=activation, action_space=act_space)
+            return pi, logp, logp_pi
+        raise NotImplementedError('action space {} not implemented'.format(
+            act_space))
 
     @staticmethod
     def build_policy_loss(logp, adv_ph, learning_rate):
