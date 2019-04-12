@@ -4,6 +4,7 @@ import logging
 
 import click
 import tensorflow as tf
+from matplotlib import pyplot as plt
 
 from deeprl.tasks.run import maybe_run
 from deeprl.tasks import plotting
@@ -74,6 +75,7 @@ def benchmark(ctx):
         plotting.deeprlplot(
             exp_name, imps, num_runs=num_runs, benchmark=True,
             epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
+    plt.show()
 
 
 @cli.command("run")
@@ -92,6 +94,7 @@ def run(ctx, implementation):
         plotting.deeprlplot(
             exp_name, [implementation], num_runs=num_runs,
             epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
+    plt.show()
 
 
 @cli.command("plot")
@@ -111,6 +114,7 @@ def plot(ctx, implementation, value):
             exp_name, implementation,
             epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']),
             value=value, **kwargs)
+    plt.show()
 
 
 if __name__ == "__main__":

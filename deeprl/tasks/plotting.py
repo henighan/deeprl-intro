@@ -39,8 +39,10 @@ def deeprlplot(exp_name, implementations, num_runs=None,
     ax0.legend()
     ax0.set_xlabel('TotalEnvInteracts')
     ax0.set_ylabel(value)
+    ax0.set_title(str(kwargs))
     plt.tight_layout()
-    plt.show()
+    plt.draw()
+    plt.pause(0.001)
 
 
 def get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs):
