@@ -22,7 +22,18 @@ def test_play_episode_buffer_full(mocker, learner, agent_step_ret):
     full_mock = mocker.patch('deeprl.replay_buffer.ReplayBuffer.full',
                              new_callable=mocker.PropertyMock)
     full_mock.side_effect = [False, False, False, False, True]
-    # learner.agent.step.return_value = ([0], 0, 0)
+    learner.agent.step.return_value = agent_step_ret
+    ret_ep_len, ret_ep_ret = learner.play_episode()
+    assert ret_ep_len == 2
+    learner.logger.store.assert_called_with(Logp=0, VVals=0)
+    assert len(learner.logger.store.call_args_list) == 2
+    assert learner.buffer.ptr == 2
+
+
+def test_play_episode_max_ep_len(mocker, learner, agent_step_ret):
+    """ test play_episode when the max_ep_len is reached """
+    learner.max_ep_len = 2
+    learner.logger = mocker.Mock()
     learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
     assert ret_ep_len == 2
