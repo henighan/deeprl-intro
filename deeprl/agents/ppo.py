@@ -32,8 +32,7 @@ class PPO(VPG):
         super().create_placeholders(obs_space, act_space)
         self.placeholders['logp'] = tfph(None, name='logp')
 
-    def build_policy_loss(self, pi, logp, logp_pi,
-                          placeholders, learning_rate):
+    def build_policy_loss(self, logp, placeholders, learning_rate):
         """ overwrite parent method. Build the PPO policy loss """
         # prob of action taken according to the previous policy
         p_old = np.exp(placeholders['logp'])

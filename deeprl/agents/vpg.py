@@ -92,7 +92,7 @@ class VPG():
             self.hidden_sizes, self.activation)
         # policy loss and train op
         self.pi_loss, self.pi_train_op = self.build_policy_loss(
-            pi, logp, logp_pi, self.placeholders, self.pi_lr)
+            logp, self.placeholders, self.pi_lr)
         # value function estimator
         val = self.build_value_function(self.placeholders['obs'],
                                         hidden_sizes=self.hidden_sizes,
@@ -150,7 +150,7 @@ class VPG():
             act_space))
 
     @staticmethod
-    def build_policy_loss(pi, logp, logp_pi, placeholders, learning_rate):
+    def build_policy_loss(logp, placeholders, learning_rate):
         """ build the graph for the policy loss """
         pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
         pi_train_op = tf.train.AdamOptimizer(
