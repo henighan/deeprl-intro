@@ -52,6 +52,9 @@ def process_cli_kwargs(all_kwargs):
 @click.option('--activation', default=['tanh'],
               help='Activation to use in actor-critic MLPs',
               show_default=True, multiple=True)
+@click.option('--algo', '-a', default='vpg',
+              help='Algorithm (ie agent) to use', show_default=True,
+              type=click.Choice(['vpg', 'trpo', 'ppo', 'ddpg', 'td3', 'sac']))
 @click.pass_context
 def cli(ctx, exp_name, num_runs, **kwargs):
     """Main entry point"""

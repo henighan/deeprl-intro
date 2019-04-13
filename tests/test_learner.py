@@ -37,8 +37,8 @@ def test_play_episode_max_ep_len(mocker, learner, agent_step_ret):
     learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
     assert ret_ep_len == 2
-    learner.logger.store.assert_called_with(Logp=0, VVals=0)
-    assert len(learner.logger.store.call_args_list) == 2
+    learner.logger.store.assert_called_with(EpLen=2, EpRet=0.)
+    assert len(learner.logger.store.call_args_list) == 3
     assert learner.buffer.ptr == 2
 
 
