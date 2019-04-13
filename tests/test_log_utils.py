@@ -12,9 +12,10 @@ def test_hidden_sizes_to_str_smoke():
 
 def test_kwargs_to_exp_name_strs():
     """ test converting kwargs to strings for exp name """
-    kwargs = {'num_runs': 3, 'activation': tf.tanh, 'hidden_sizes': (32, 64)}
+    kwargs = {'num_runs': 3, 'activation': tf.tanh, 'hidden_sizes': (32, 64),
+              'algo': 'ppo'}
     ret = log_utils.kwargs_to_exp_name_strs(kwargs)
-    assert ret == ['tanh', 'hid32-64']
+    assert ret == ['tanh', 'hid32-64', 'ppo']
 
 
 def test_kwargs_to_exp_name():
