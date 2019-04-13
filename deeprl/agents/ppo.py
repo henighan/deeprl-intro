@@ -1,5 +1,4 @@
 """ Proximal Policy Optimization Agent """
-import numpy as np
 import tensorflow as tf
 
 from deeprl.agents import VPG
@@ -35,21 +34,22 @@ class PPO(VPG):
     def build_policy_loss(self, logp, placeholders, learning_rate):
         """ overwrite parent method. Build the PPO policy loss """
         # prob of action taken according to the previous policy
-        p_old = np.exp(placeholders['logp'])
+        p_old = tf.exp(placeholders['logp'])
         # prob of action taken according to current policy
         p_new = tf.exp(logp)
         surrogate = placeholders['adv']*p_new/p_old
         max_surrogate = self.build_max_surrogate(
-            placeholders['adv'], self.clip_ratio)
+            self.clip_ratio, placeholders['adv'])
         clipped_surrogate = self.build_clipped_surrogate(
             surrogate, max_surrogate)
         pi_loss = -tf.reduce_mean(clipped_surrogate)
+        pi_loss = -tf.reduce_mean(surrogate)
         pi_train_op = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(pi_loss)
         """ We additionally need to calculate the kl divergence of the new
         policy from the old for use as an early-stopping criterion during
         policy training """
-        self.kl_divergence = p_old(placeholders['logp'] - logp)
+        self.kl_divergence = p_old*(placeholders['logp'] - logp)
         return pi_loss, pi_train_op
 
     @staticmethod
