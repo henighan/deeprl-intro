@@ -58,10 +58,9 @@ class VPG():
         old_pi_loss, old_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
         # update policy
-        self.sess.run(self.pi_train_op, feed_dict=feed_dict)
+        self.update_policy(feed_dict)
         # update value function
-        for _ in range(self.val_train_iters):
-            self.sess.run(self.val_train_op, feed_dict=feed_dict)
+        self.update_value_function(feed_dict)
         # calculate change in loss
         new_pi_loss, new_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
@@ -71,6 +70,17 @@ class VPG():
                 'LossV': old_val_loss,
                 'DeltaLossPi': delta_pi_loss,
                 'DeltaLossV': delta_val_loss}
+
+    def update_policy(self, feed_dict):
+        """ update the policy based on the replay-buffer data (stored in
+        feed_dict) """
+        self.sess.run(self.pi_train_op, feed_dict=feed_dict)
+
+    def update_value_function(self, feed_dict):
+        """ update the policy based on the replay-buffer data (stored in
+        feed_dict) """
+        for _ in range(self.val_train_iters):
+            self.sess.run(self.val_train_op, feed_dict=feed_dict)
 
     def build_graph(self, obs_space, act_space):
         """ Build the tensorflow graph """
@@ -82,7 +92,7 @@ class VPG():
             self.hidden_sizes, self.activation)
         # policy loss and train op
         self.pi_loss, self.pi_train_op = self.build_policy_loss(
-            logp, self.placeholders['adv'], self.pi_lr)
+            pi, logp, logp_pi, self.placeholders, self.pi_lr)
         # value function estimator
         val = self.build_value_function(self.placeholders['obs'],
                                         hidden_sizes=self.hidden_sizes,
@@ -140,9 +150,9 @@ class VPG():
             act_space))
 
     @staticmethod
-    def build_policy_loss(logp, adv_ph, learning_rate):
+    def build_policy_loss(pi, logp, logp_pi, placeholders, learning_rate):
         """ build the graph for the policy loss """
-        pi_loss = tf.reduce_mean(-logp*adv_ph)
+        pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
         pi_train_op = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(pi_loss)
         return pi_loss, pi_train_op
