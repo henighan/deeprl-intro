@@ -1,4 +1,5 @@
 """ Proximal Policy Optimization Agent """
+import numpy as np
 import tensorflow as tf
 
 from deeprl.agents import VPG
@@ -17,7 +18,7 @@ class PPO(VPG):
                  activation=tf.tanh, val_train_iters=80, sess=None,
                  close_sess=True, clip_ratio=0.2, pi_train_iters=80,
                  target_kl=0.01):
-        super().__init__(self, pi_lr=pi_lr, val_lr=val_lr,
+        super().__init__(pi_lr=pi_lr, val_lr=val_lr,
                          hidden_sizes=hidden_sizes, activation=activation,
                          val_train_iters=val_train_iters, sess=sess,
                          close_sess=close_sess)
@@ -35,22 +36,35 @@ class PPO(VPG):
                           placeholders, learning_rate):
         """ overwrite parent method. Build the PPO policy loss """
         # prob of action taken according to the previous policy
-        p_old = tf.exp(placeholders['logp'])
-        # prob of action sampled by the current policy
-        p_new = NotImplementedError()
+        p_old = np.exp(placeholders['logp'])
+        # prob of action taken according to current policy
+        p_new = tf.exp(logp)
         surrogate = placeholders['adv']*p_new/p_old
         max_surrogate = self.build_max_surrogate(
             placeholders['adv'], self.clip_ratio)
         clipped_surrogate = self.build_clipped_surrogate(
             surrogate, max_surrogate)
-        pi_loss = tf.reduce_mean(clipped_surrogate)
+        pi_loss = -tf.reduce_mean(clipped_surrogate)
         pi_train_op = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(pi_loss)
         """ We additionally need to calculate the kl divergence of the new
         policy from the old for use as an early-stopping criterion during
         policy training """
-        self.kl_divergence = p_old(placeholders['logp'] - logp_pi)
+        self.kl_divergence = p_old(placeholders['logp'] - logp)
         return pi_loss, pi_train_op
+
+    @staticmethod
+    def build_max_surrogate(clip_ratio, adv):
+        """ build the maximum surrogate
+        max_surrogate = g(clip_ratio, adv)
+        = (1 + sign(adv)*clip_ratio)*adv """
+        return (1 + clip_ratio*tf.math.sign(adv))*adv
+
+    @staticmethod
+    def build_clipped_surrogate(surrogate, max_surrogate):
+        """ build the clipped surrogate
+        clipped_surrogate = minimum(surrogate, max_surrogate) """
+        return tf.minimum(surrogate, max_surrogate)
 
     def update_policy(self, feed_dict):
         """ update the policy based on the replay-buffer data in feed_dict,
