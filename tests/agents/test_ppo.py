@@ -66,7 +66,7 @@ class TestPPO(tf.test.TestCase):
             self.assertAlmostEqual(init_loss, -np.mean(adv), places=5)
             # since the new and old policies are the before training, kl
             # divergence should be zero
-            self.assertTrue(all(init_kl == 0))
+            self.assertAlmostEqual(init_kl, 0)
             sess.run(pi_train_op, feed_dict=feed_dict)
             after_loss, after_kl = sess.run((pi_loss, self.ppo.kl_divergence),
                                           feed_dict=feed_dict)
@@ -76,9 +76,5 @@ class TestPPO(tf.test.TestCase):
             # ensure that logp goes up if adv > 0 and vice versa
             np.testing.assert_array_equal(np.sign(delta_logp),
                                           np.sign(adv))
-            # ensure that kl_div went up
-            print(after_kl)
-            self.assertTrue(all(after_kl > 0))
-            print(delta_logp)
-            print(adv)
-            self.assertTrue(False)
+            # ensure that kl_div changed
+            self.assertNotEqual(after_kl, init_kl)

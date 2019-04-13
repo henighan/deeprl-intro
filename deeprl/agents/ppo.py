@@ -46,10 +46,10 @@ class PPO(VPG):
         pi_loss = -tf.reduce_mean(surrogate)
         pi_train_op = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(pi_loss)
-        """ We additionally need to calculate the kl divergence of the new
-        policy from the old for use as an early-stopping criterion during
-        policy training """
-        self.kl_divergence = p_old*(placeholders['logp'] - logp)
+        """ We additionally need to calculate and estimate of the kl
+        divergence of the new policy from the old for use as an
+        early-stopping criterion during policy training """
+        self.kl_divergence = tf.reduce_mean(placeholders['logp'] - logp)
         return pi_loss, pi_train_op
 
     @staticmethod
