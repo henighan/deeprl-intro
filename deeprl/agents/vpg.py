@@ -58,15 +58,17 @@ class VPG():
         old_pi_loss, old_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
         # update policy
-        self.update_policy(feed_dict)
+        policy_to_logs = self.update_policy(feed_dict)
         # update value function
-        self.update_value_function(feed_dict)
+        value_to_logs = self.update_value_function(feed_dict)
         # calculate change in loss
         new_pi_loss, new_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
         delta_pi_loss = new_pi_loss - old_pi_loss
         delta_val_loss = new_val_loss - old_val_loss
-        return {'LossPi': old_pi_loss,
+        return {**policy_to_logs,
+                **value_to_logs,
+                'LossPi': old_pi_loss,
                 'LossV': old_val_loss,
                 'DeltaLossPi': delta_pi_loss,
                 'DeltaLossV': delta_val_loss}
@@ -75,12 +77,14 @@ class VPG():
         """ update the policy based on the replay-buffer data (stored in
         feed_dict) """
         self.sess.run(self.pi_train_op, feed_dict=feed_dict)
+        return {}
 
     def update_value_function(self, feed_dict):
         """ update the policy based on the replay-buffer data (stored in
         feed_dict) """
         for _ in range(self.val_train_iters):
             self.sess.run(self.val_train_op, feed_dict=feed_dict)
+        return {}
 
     def build_graph(self, obs_space, act_space):
         """ Build the tensorflow graph """

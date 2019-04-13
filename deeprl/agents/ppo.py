@@ -1,8 +1,13 @@
 """ Proximal Policy Optimization Agent """
+import logging
+
 import tensorflow as tf
 
 from deeprl.agents import VPG
+from deeprl.common import LOGGER_NAME
 from deeprl.tf_utils import tfph
+
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 class PPO(VPG):
@@ -12,6 +17,9 @@ class PPO(VPG):
 
 
     train_ph_keys = ['obs', 'act', 'logp', 'adv', 'ret']
+    log_tabular_kwargs = {**VPG.log_tabular_kwargs,
+                          'KL': {'average_only': True},
+                          'StopIter': {'average_only': True}}
 
     def __init__(self, pi_lr=3e-4, val_lr=1e-3, hidden_sizes=(64, 64),
                  activation=tf.tanh, val_train_iters=80, sess=None,
@@ -43,7 +51,6 @@ class PPO(VPG):
         clipped_surrogate = self.build_clipped_surrogate(
             surrogate, max_surrogate)
         pi_loss = -tf.reduce_mean(clipped_surrogate)
-        pi_loss = -tf.reduce_mean(surrogate)
         pi_train_op = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(pi_loss)
         """ We additionally need to calculate and estimate of the kl
@@ -68,9 +75,15 @@ class PPO(VPG):
     def update_policy(self, feed_dict):
         """ update the policy based on the replay-buffer data in feed_dict,
         and stop early if the kl divergence reaches the target """
+        stop_iter = 0
         for _ in range(self.pi_train_iters):
+            stop_iter += 1
             kl_div, _ = self.sess.run((self.kl_divergence, self.pi_train_op),
                                       feed_dict=feed_dict)
             # if we reach the target kl_div, halt training
-            if kl_div >= self.target_kl:
+            if kl_div > 1.5*self.target_kl:
+                LOGGER.warning(
+                    'Early stopping at step {}'.format(stop_iter)
+                    + ' due to reaching max kl.')
                 break
+        return {'KL': kl_div, 'StopIter': stop_iter}
