@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from deeprl.replay_buffer import ReplayBuffer
-from deeprl import tf_utils
+from deeprl.utils import tf_utils
 from spinup.utils.logx import EpochLogger
 
 

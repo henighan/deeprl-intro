@@ -5,7 +5,7 @@ import tensorflow as tf
 import numpy as np
 
 from deeprl.policies import categorical
-from deeprl import tf_utils
+from deeprl.utils import tf_utils
 
 
 class TestCategorical(tf.test.TestCase):

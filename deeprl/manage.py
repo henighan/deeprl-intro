@@ -6,8 +6,8 @@ import click
 import tensorflow as tf
 from matplotlib import pyplot as plt
 
-from deeprl.tasks.run import maybe_run
-from deeprl.tasks import plotting
+from deeprl.helpers.run import maybe_run
+from deeprl.helpers import plotting
 from deeprl.common import DEFAULT_KWARGS, LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
