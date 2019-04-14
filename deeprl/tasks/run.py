@@ -5,7 +5,7 @@ from deeprl.learner import Learner
 from spinup.utils.run_utils import ExperimentGrid
 import spinup
 import tensorflow as tf
-from deeprl import log_utils
+from deeprl.utils import logdir
 from deeprl import agents
 from deeprl.common import DEFAULT_KWARGS
 import logging
@@ -26,9 +26,9 @@ def maybe_run(exp_name, num_runs, implementations, **kwargs):
 def maybe_run_single_seed(exp_name, implementation, epochs, seed, kwargs):
     """ Check if experiment has been run and if so, for how many epochs. Run
     only if it hasn't been run, or not for enough epochs """
-    n_epochs_already_run = log_utils.num_run_epochs(
+    n_epochs_already_run = logdir.num_run_epochs(
         exp_name, implementation, seed, kwargs)
-    output_dir = log_utils.output_dir_from_kwargs(
+    output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
     if n_epochs_already_run >= epochs:
         logger.info(
@@ -44,7 +44,7 @@ def maybe_run_single_seed(exp_name, implementation, epochs, seed, kwargs):
     
 
 def run(exp_name, implementation, seed, **kwargs):
-    output_dir = log_utils.output_dir_from_kwargs(
+    output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
     logger.info('saving to {}'.format(output_dir))
     if implementation == 'spinup':
