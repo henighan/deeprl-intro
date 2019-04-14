@@ -1,5 +1,7 @@
 # Intro Deep-RL
 
+[![Build Status](https://travis-ci.com/henighan/deeprl-intro.svg?branch=master)](https://travis-ci.com/henighan/deeprl-intro)
+
 ## What is this?
 The primary use of this repo is to store my attempts at deep reinforcement-learning algorithms, and benchmark them against the implementations in  [OpenAI's spinup](https://spinningup.openai.com/en/latest/) repository. This is my first attempt at deep reinforcement learning, hence the name.
 
