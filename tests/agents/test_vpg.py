@@ -4,8 +4,8 @@ import tensorflow as tf
 import gym
 
 from deeprl.agents.vpg import VPG
-from deeprl import tf_utils
-from deeprl.tf_utils import tfph
+from deeprl.utils import tf_utils
+from deeprl.utils.tf_utils import tfph
 
 
 class TestVPG(tf.test.TestCase):

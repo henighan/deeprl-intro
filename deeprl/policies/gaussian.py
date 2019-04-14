@@ -2,7 +2,7 @@
 import tensorflow as tf
 import numpy as np
 
-from deeprl.tf_utils import mlp
+from deeprl.utils.tf_utils import mlp
 
 
 def mlp_gaussian_policy(x, a, hidden_sizes, activation, action_space,

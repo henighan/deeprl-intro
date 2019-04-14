@@ -3,7 +3,7 @@ import tensorflow as tf
 from gym.spaces import Box, Discrete
 from deeprl.policies.gaussian import mlp_gaussian_policy
 from deeprl.policies.categorical import mlp_categorical_policy
-from deeprl.tf_utils import mlp, tfph
+from deeprl.utils.tf_utils import mlp, tfph
 
 
 class VPG():

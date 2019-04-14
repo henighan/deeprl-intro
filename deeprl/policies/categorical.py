@@ -1,7 +1,7 @@
 """ Categorical Policy Utils """
 import tensorflow as tf
 
-from deeprl.tf_utils import mlp
+from deeprl.utils.tf_utils import mlp
 
 
 def mlp_categorical_policy(obs, act, hidden_sizes, activation, action_space):

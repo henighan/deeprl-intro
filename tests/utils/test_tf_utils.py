@@ -2,7 +2,7 @@
 import tensorflow as tf
 import numpy as np
 
-from deeprl import tf_utils
+from deeprl.utils import tf_utils
 
 
 class TestTfUtils(tf.test.TestCase):

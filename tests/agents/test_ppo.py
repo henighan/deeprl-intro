@@ -5,8 +5,8 @@ import gym
 
 from deeprl.agents import PPO
 
-from deeprl import tf_utils
-from deeprl.tf_utils import tfph
+from deeprl.utils import tf_utils
+from deeprl.utils.tf_utils import tfph
 
 
 class TestPPO(tf.test.TestCase):

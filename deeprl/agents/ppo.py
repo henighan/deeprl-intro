@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from deeprl.agents import VPG
 from deeprl.common import LOGGER_NAME
-from deeprl.tf_utils import tfph
+from deeprl.utils.tf_utils import tfph
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
