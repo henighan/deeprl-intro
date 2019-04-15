@@ -23,7 +23,8 @@ def deeprlplot(exp_name, implementations, num_runs=None,
         fig, ax0 = plt.subplots()
     for imp in implementations:
         data = get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs)
-        ax0.plot(data['TotalEnvInteracts'], data[value], '.', label=imp)
+        ax0.plot(data['TotalEnvInteracts'], data[value], '.', label=imp,
+                 markersize=2, alpha=0.5)
         if benchmark:
             tmp = calculate_delta_ep_ret(data, epochs)
             tmp['imp'] = imp

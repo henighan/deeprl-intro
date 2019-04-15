@@ -58,7 +58,6 @@ def process_cli_kwargs(all_kwargs):
 @click.pass_context
 def cli(ctx, exp_name, num_runs, **kwargs):
     """Main entry point"""
-    click.echo(ctx)
     ctx.obj = {'exp_name': exp_name, 'num_runs': num_runs,
                'kwargs': process_cli_kwargs(kwargs)}
     click.echo('exp name: {}'.format(exp_name))
