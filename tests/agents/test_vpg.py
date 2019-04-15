@@ -4,8 +4,8 @@ import tensorflow as tf
 import gym
 
 from deeprl.agents.vpg import VPG
-from deeprl import tf_utils
-from deeprl.tf_utils import tfph
+from deeprl.utils import tf_utils
+from deeprl.utils.tf_utils import tfph
 
 
 class TestVPG(tf.test.TestCase):
@@ -33,7 +33,7 @@ class TestVPG(tf.test.TestCase):
             obs_ph, hidden_sizes=(4,), activation=None)
         n_params = (obs_dim+1)*4 + (4 + 1)*1
         with self.cached_session() as sess:
-            ret_n_params = sess.run(tf_utils.trainable_count(scope='val'))
+            ret_n_params = tf_utils.trainable_count(scope='val')
             sess.run(tf.global_variables_initializer())
             sess_val = sess.run(val, feed_dict={obs_ph: obs})
         self.assertEqual(n_params, ret_n_params)
@@ -68,7 +68,8 @@ class TestVPG(tf.test.TestCase):
         logp = tf.get_variable(
             'adv', dtype=tf.float32, trainable=True,
             initializer=batch_size*[0.])
-        loss, train_op = self.vpg.build_policy_loss(logp, adv_ph, lr=1e-3)
+        loss, train_op = self.vpg.build_policy_loss(
+            logp, {'adv': adv_ph}, learning_rate=1e-3)
         with self.cached_session() as sess:
             sess.run(tf.global_variables_initializer())
             old_loss = sess.run(loss, feed_dict={adv_ph: adv})

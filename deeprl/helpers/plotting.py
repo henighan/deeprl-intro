@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-from deeprl import log_utils
+from deeprl.utils import logdir
 from deeprl.common import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -23,7 +23,8 @@ def deeprlplot(exp_name, implementations, num_runs=None,
         fig, ax0 = plt.subplots()
     for imp in implementations:
         data = get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs)
-        ax0.plot(data['TotalEnvInteracts'], data[value], '.', label=imp)
+        ax0.plot(data['TotalEnvInteracts'], data[value], '.', label=imp,
+                 markersize=2, alpha=0.5)
         if benchmark:
             tmp = calculate_delta_ep_ret(data, epochs)
             tmp['imp'] = imp
@@ -39,8 +40,10 @@ def deeprlplot(exp_name, implementations, num_runs=None,
     ax0.legend()
     ax0.set_xlabel('TotalEnvInteracts')
     ax0.set_ylabel(value)
+    ax0.set_title(str(kwargs))
     plt.tight_layout()
-    plt.show()
+    plt.draw()
+    plt.pause(0.001)
 
 
 def get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs):
@@ -49,10 +52,10 @@ def get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs):
     columns. If epochs is specified, it will only return data up to that
     epoch. """
     data = pd.DataFrame()
-    seeds = log_utils.seeds(num_runs) if num_runs \
-            else log_utils.already_run_seeds(exp_name, imp, kwargs)
+    seeds = logdir.seeds(num_runs) if num_runs \
+            else logdir.already_run_seeds(exp_name, imp, kwargs)
     for seed in seeds:
-        output_dir = log_utils.output_dir_from_kwargs(
+        output_dir = logdir.output_dir_from_kwargs(
             exp_name, imp, kwargs, seed=seed)
         logging.debug('plotter reading {}'.format(output_dir))
         path = os.path.join(output_dir, 'progress.txt')
