@@ -20,6 +20,10 @@ class VPG():
                           'LossV': {'average_only': True},
                           'DeltaLossPi': {'average_only': True},
                           'DeltaLossV': {'average_only': True}}
+    # since this is an on-policy algorithm, we instruct the learner
+    # to not run additional episodes for evaluation, but evaluate performance
+    # directly on the same episodes used for training
+    eval_after_epoch = False
 
     def __init__(self, pi_lr=3e-4, val_lr=1e-3, hidden_sizes=(64, 64),
                  activation=tf.tanh, val_train_iters=80, sess=None,

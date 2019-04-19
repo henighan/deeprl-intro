@@ -16,12 +16,14 @@ class Learner():
 
     def __init__(self, agent, env, steps_per_epoch=4000, epochs=50, seed=0,
                  output_dir=None, output_fname='progress.txt',
-                 exp_name=None, max_ep_len=1000, gamma=0.99, lam=0.97):
+                 exp_name=None, max_ep_len=1000, gamma=0.99, lam=0.97,
+                 n_test_episodes=10):
         self.epoch_len, self.n_epochs = steps_per_epoch, epochs
-        self.max_ep_len = max_ep_len
+        self.max_ep_len, self.n_test_episodes = max_ep_len, n_test_episodes
         self.logger = EpochLogger(output_dir=output_dir,
                                   output_fname=output_fname,
                                   exp_name=exp_name)
+        self.train_step_ctr = 0
         print('locals')
         for key, val in locals().items():
             print('{}: {}'.format(key, len(str(val))))
@@ -38,43 +40,62 @@ class Learner():
         np.random.seed(seed)
         tf.set_random_seed(seed)
 
-    def play_episode(self):
+    def play_episode(self, testing=False):
+        """ Plays out a full episode UNLESS max_ep_len is reached or
+        the steps_per_epoch is reached. testing=True is meant to be
+        used when we want to evaluate the agent's performance. """
+        log_prefix = 'Test' if testing else ''
         obs = self.env.reset()
         rew, ep_len, ep_ret, is_term_state = 0, 0, 0, False
-        while ((not self.buffer.full)
+        while ((self.train_step_ctr < self.epoch_len)
                 and (not is_term_state)
                 and (ep_len < self.max_ep_len)):
             # environment variables to store in buffer
             env_to_buffer = dict(obs=obs, rew=rew)
             # Take agent step, return values to store in buffer, and in logs
             agent_to_buffer, agent_to_log = self.agent.step(obs)
-            self.buffer.store({**env_to_buffer, **agent_to_buffer})
-            self.logger.store(**agent_to_log)
+            if not testing:
+                self.buffer.store({**env_to_buffer, **agent_to_buffer})
+                self.logger.store(**agent_to_log)
             ep_len += 1
             ep_ret += rew
             obs, rew, is_term_state, _ = self.env.step(agent_to_buffer['act'])
+            if not testing:
+                self.train_step_ctr += 1
         if (is_term_state) or (ep_len >= self.max_ep_len):
-            self.logger.store(EpRet=ep_ret, EpLen=ep_len)
+            self.logger.store(**{log_prefix + 'EpRet': ep_ret,
+                                 log_prefix + 'EpLen': ep_len})
         else:
             # if trajectory didn't reach terminal state, bootstrap to target
             rew = self.agent.step(obs)[0]['val']
-        self.buffer.finish_path(rew) # calculate advantage
+        if not testing:
+            self.buffer.finish_path(rew) # calculate advantage
         return ep_len, ep_ret
 
     def play_epoch(self):
-        while not self.buffer.full:
+        """ play out the episodes for this epoch """
+        self.train_step_ctr = 0
+        while self.train_step_ctr < self.epoch_len:
             self.play_episode()
 
     def train_epoch(self):
+        """ run agent training for this epoch """
         to_log = self.agent.train(
             self.buffer.get())
         self.logger.store(**to_log)
+
+    def test_epoch(self):
+        """ evaluate agents performance """
+        for _ in range(self.n_test_episodes):
+            self.play_episode(testing=True)
 
     def learn(self):
         for epoch in range(self.n_epochs):
             start_time = time.time()
             self.play_epoch()
             self.train_epoch()
+            if self.agent.eval_after_epoch:
+                self.test_epoch()
             self.log_epoch(epoch, start_time)
             if (epoch % 10 == 0) or (epoch == self.n_epochs - 1):
                 self.logger.save_state({'env': self.env}, None)

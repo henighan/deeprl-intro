@@ -15,19 +15,14 @@ def agent_step_ret():
             {'VVals': 0, 'Logp': 0})
 
 
-def test_play_episode_buffer_full(mocker, learner, agent_step_ret):
-    """ test play_episode when the buffer fills up """
+def test_play_episodes_reached_epoch_len(mocker, learner, agent_step_ret):
+    """ test play_eposide when epoch end is reached """
     learner.logger = mocker.Mock()
-    # mock buffer to be full after two steps
-    full_mock = mocker.patch('deeprl.replay_buffer.ReplayBuffer.full',
-                             new_callable=mocker.PropertyMock)
-    full_mock.side_effect = [False, False, False, False, True]
+    learner.max_ep_len = 2
     learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
     assert ret_ep_len == 2
-    learner.logger.store.assert_called_with(Logp=0, VVals=0)
-    assert len(learner.logger.store.call_args_list) == 2
-    assert learner.buffer.ptr == 2
+    assert len(learner.logger.store.call_args_list) == 3
 
 
 def test_play_episode_max_ep_len(mocker, learner, agent_step_ret):
@@ -57,6 +52,33 @@ def test_play_episode_episode_ends(mocker, learner, agent_step_ret):
     learner.logger.store.assert_any_call(Logp=0, VVals=0)
     learner.logger.store.assert_called_with(EpRet=0, EpLen=4)
     assert len(learner.logger.store.call_args_list) == 5
+
+
+def test_play_episode_check_buffer_called(mocker, learner, agent_step_ret):
+    """ make sure the bufer is being called properly during play_episode
+    when testing=False """
+    learner.logger = mocker.Mock()
+    learner.max_ep_len = 2
+    learner.agent.step.return_value = agent_step_ret
+    learner.buffer = mocker.Mock()
+    ret_ep_len, ret_ep_ret = learner.play_episode()
+    assert len(learner.buffer.store.call_args_list) == 2
+
+
+def test_play_episode_testing_true(mocker, learner, agent_step_ret):
+    """ smoke test play_episode with testing=True """
+    learner.logger = mocker.Mock()
+    learner.max_ep_len = 2
+    learner.agent.step.return_value = agent_step_ret
+    learner.buffer = mocker.Mock()
+    ret_ep_len, ret_ep_ret = learner.play_episode(testing=True)
+    # in testing mode, nothing should go to the buffer!
+    learner.buffer.store.assert_not_called()
+    learner.buffer.finish_path.assert_not_called()
+    # no incrementing the train_step_ctr
+    assert learner.train_step_ctr == 0
+    # everything log should be prefixed with Test
+    learner.logger.store.assert_called_once_with(TestEpRet=0., TestEpLen=2)
 
 
 def test_learner_smoke(mocker, continuous_env, agent_step_ret):
