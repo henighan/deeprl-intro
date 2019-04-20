@@ -51,7 +51,7 @@ class Learner():
                 and (not is_term_state)
                 and (ep_len < self.max_ep_len)):
             # environment variables to store in buffer
-            env_to_buffer = dict(obs=obs, rew=rew)
+            env_to_buffer = dict(obs=obs, rew=rew, is_term=is_term_state)
             # Take agent step, return values to store in buffer, and in logs
             agent_to_buffer, agent_to_log = self.agent.step(obs)
             if not testing:
@@ -69,7 +69,8 @@ class Learner():
             # if trajectory didn't reach terminal state, bootstrap to target
             rew = self.agent.step(obs)[0]['val']
         if not testing:
-            self.buffer.finish_path(rew) # calculate advantage
+            # calculate advantage
+            self.buffer.finish_path(last_val=rew, last_obs=obs)
         return ep_len, ep_ret
 
     def play_epoch(self):

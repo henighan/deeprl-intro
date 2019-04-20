@@ -28,7 +28,7 @@ class ReplayBuffer:
             self.buf[key][self.ptr] = val
         self.ptr += 1
 
-    def finish_path(self, last_val=0):
+    def finish_path(self, last_val=0, last_obs=None):
         """ Upon completing an episode, calculate the advantage and
         rewards-to-go """
         path_slice = slice(self.path_start_idx, self.ptr)
@@ -41,6 +41,13 @@ class ReplayBuffer:
         # for the value function
         self.buf['ret'][path_slice] = rewards_to_go(
             trajectory_rews, gamma=self.gamma, last_val=last_val)
+        # fill in the next observations (which we've been ignoring during
+        # the trajectory)
+        print(self.buf['obs'].shape)
+        print(self.buf['next_obs'].shape)
+        self.buf['next_obs'][path_slice] = np.vstack(
+            [self.buf['obs'][self.path_start_idx+1:self.ptr, :],
+             last_obs[np.newaxis, :]])
         self.path_start_idx = self.ptr
 
     def dump(self):
@@ -55,8 +62,9 @@ class ReplayBuffer:
     def initialize_buf(self, to_buffer):
         """ Initialize the buffer storage based on the shapes of the
         values we want to store. We also always add fields for the
-        return-to-go and advantage  """
-        buf = {'adv': self.zeros(1), 'ret': self.zeros(1)}
+        return-to-go, advantage and next state observation """
+        buf = {'adv': self.zeros(1), 'ret': self.zeros(1),
+               'next_obs': self.zeros(to_buffer['obs'])}
         return {**buf, **{key: self.zeros(val)
                           for key, val in to_buffer.items()}}
 

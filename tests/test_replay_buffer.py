@@ -27,6 +27,7 @@ def test_initialize_buf_smoke(buffer_size, replay_buffer):
     assert 'rew' in ret
     assert ret['rew'].shape == (buffer_size,)
     assert ret['obs'].shape == (buffer_size, 3)
+    assert ret['next_obs'].shape == (buffer_size, 3)
 
 
 def test_store_smoke(buffer_size, replay_buffer):
@@ -44,11 +45,38 @@ def test_store_smoke(buffer_size, replay_buffer):
 def test_finish_path_smoke(replay_buffer):
     """ smoke test finish path """
     to_buffer = {'obs': np.array([1, 2, 3]), 'rew': 1.2, 'val': 3.4}
-    for _ in range(3):
+    for _ in range(5):
         replay_buffer.store(to_buffer)
-    replay_buffer.finish_path()
+    replay_buffer.finish_path(last_val=0, last_obs=np.array([4, 5, 6]))
     assert replay_buffer.buf['adv'].shape == (replay_buffer.buffer_size,)
     assert replay_buffer.buf['ret'].shape == (replay_buffer.buffer_size,)
+    # ensure next_obs was set properly
+    np.testing.assert_equal(
+        replay_buffer.buf['obs'][1], replay_buffer.buf['next_obs'][0])
+    np.testing.assert_equal(
+        replay_buffer.buf['next_obs'][4], np.array([4, 5, 6]))
+    for _ in range(5):
+        replay_buffer.store(to_buffer)
+    replay_buffer.finish_path(last_val=0, last_obs=np.array([4, 5, 6]))
+    np.testing.assert_equal(
+        replay_buffer.buf['obs'][6], replay_buffer.buf['next_obs'][5])
+    np.testing.assert_equal(
+        replay_buffer.buf['next_obs'][9], np.array([4, 5, 6]))
+
+
+def test_finish_path_1d_obs(replay_buffer):
+    """ I got an error when using a 1-dimensional state space """
+    to_buffer = {'obs': np.array([1]), 'rew': 1.2, 'val': 3.4}
+    for _ in range(5):
+        replay_buffer.store(to_buffer)
+    replay_buffer.finish_path(last_val=0, last_obs=np.array([4]))
+    assert replay_buffer.buf['adv'].shape == (replay_buffer.buffer_size,)
+    assert replay_buffer.buf['ret'].shape == (replay_buffer.buffer_size,)
+    # ensure next_obs was set properly
+    np.testing.assert_equal(
+        replay_buffer.buf['obs'][1], replay_buffer.buf['next_obs'][0])
+    np.testing.assert_equal(
+        replay_buffer.buf['next_obs'][4], np.array([4]))
 
 
 def test_dump(buffer_size, replay_buffer):
@@ -72,7 +100,7 @@ def test_ptr_wraps_around(buffer_size, replay_buffer):
     epoch1_store = {'obs': np.array([4, 5, 6]), 'rew': 1.5, 'val': 1.4}
     for _ in range(buffer_size):
         replay_buffer.store(epoch0_store)
-    replay_buffer.finish_path()
+    replay_buffer.finish_path(last_val=0, last_obs=np.array([4, 5, 6]))
     assert replay_buffer.ptr == buffer_size
     assert replay_buffer.buf['val'][0] == pytest.approx(3.4)
     replay_buffer.store(epoch1_store)
@@ -84,4 +112,14 @@ def test_raises_notimp_if_buffer_not_multiple_of_epoch_size():
     """ If the buffer size is not an integer mutiple of
     the epoch size, this should raise an error. """
     with pytest.raises(NotImplementedError):
-        ret = ReplayBuffer(buffer_size=3, epoch_size=2)
+        _ = ReplayBuffer(buffer_size=3, epoch_size=2)
+
+
+def test_zeros(buffer_size, replay_buffer):
+    """ test buffer zeros function for initializing empty arrays """
+    val = np.array([0])
+    ret = replay_buffer.zeros(val)
+    assert ret.shape == (buffer_size, 1)
+    val = np.array([0, 0])
+    ret = replay_buffer.zeros(val)
+    assert ret.shape == (buffer_size, 2)

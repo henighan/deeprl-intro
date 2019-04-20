@@ -1,4 +1,5 @@
 """ Tests for Learner """
+#pylint: disable=redefined-outer-name
 import os
 import random
 import time
@@ -11,8 +12,14 @@ from deeprl.learner import Learner
 
 @pytest.fixture
 def agent_step_ret():
+    """ agent step return """
     return ({'act': np.array([0]), 'val': 0, 'logp': 0},
             {'VVals': 0, 'Logp': 0})
+
+@pytest.fixture
+def env_step_ret():
+    """ environment step return value """
+    return (np.array([0]), 0, False, None)
 
 
 def test_play_episodes_reached_epoch_len(mocker, learner, agent_step_ret):
@@ -20,7 +27,7 @@ def test_play_episodes_reached_epoch_len(mocker, learner, agent_step_ret):
     learner.logger = mocker.Mock()
     learner.max_ep_len = 2
     learner.agent.step.return_value = agent_step_ret
-    ret_ep_len, ret_ep_ret = learner.play_episode()
+    ret_ep_len, _ = learner.play_episode()
     assert ret_ep_len == 2
     assert len(learner.logger.store.call_args_list) == 3
 
@@ -30,23 +37,26 @@ def test_play_episode_max_ep_len(mocker, learner, agent_step_ret):
     learner.max_ep_len = 2
     learner.logger = mocker.Mock()
     learner.agent.step.return_value = agent_step_ret
-    ret_ep_len, ret_ep_ret = learner.play_episode()
+    ret_ep_len, _ = learner.play_episode()
     assert ret_ep_len == 2
     learner.logger.store.assert_called_with(EpLen=2, EpRet=0.)
     assert len(learner.logger.store.call_args_list) == 3
     assert learner.buffer.ptr == 2
 
 
-def test_play_episode_episode_ends(mocker, learner, agent_step_ret):
+def test_play_episode_episode_ends(mocker, learner, agent_step_ret,
+                                   env_step_ret):
     """ test play_episode when the episode terminates """
     learner.logger = mocker.Mock()
     # episode reaches termial state on fourth step
-    learner.env.step = mocker.Mock(side_effect=[([0], 0, False, None),
-                                                ([0], 0, False, None),
-                                                ([0], 0, False, None),
-                                                ([0], 0, True, None)])
+    learner.env.reset = mocker.Mock(return_value=env_step_ret[0])
+    learner.env.step = mocker.Mock(
+        side_effect=[env_step_ret,
+                     env_step_ret,
+                     env_step_ret,
+                     (np.array([0]), 0, True, None)])
     learner.agent.step.return_value = agent_step_ret
-    ret_ep_len, ret_ep_ret = learner.play_episode()
+    ret_ep_len, _ = learner.play_episode()
     print(learner.logger.store.call_args_list)
     assert ret_ep_len == 4
     learner.logger.store.assert_any_call(Logp=0, VVals=0)
@@ -61,7 +71,7 @@ def test_play_episode_check_buffer_called(mocker, learner, agent_step_ret):
     learner.max_ep_len = 2
     learner.agent.step.return_value = agent_step_ret
     learner.buffer = mocker.Mock()
-    ret_ep_len, ret_ep_ret = learner.play_episode()
+    learner.play_episode()
     assert len(learner.buffer.store.call_args_list) == 2
 
 
@@ -71,7 +81,7 @@ def test_play_episode_testing_true(mocker, learner, agent_step_ret):
     learner.max_ep_len = 2
     learner.agent.step.return_value = agent_step_ret
     learner.buffer = mocker.Mock()
-    ret_ep_len, ret_ep_ret = learner.play_episode(testing=True)
+    learner.play_episode(testing=True)
     # in testing mode, nothing should go to the buffer!
     learner.buffer.store.assert_not_called()
     learner.buffer.finish_path.assert_not_called()
@@ -83,12 +93,12 @@ def test_play_episode_testing_true(mocker, learner, agent_step_ret):
 
 def test_learner_smoke(mocker, continuous_env, agent_step_ret):
     """ Give it a a test run witha mock agent, see that is produces logs """
-    output_dir, exp_name = 'tests/tmp_test_outputs', 'learner_test'
+    output_dir = 'tests/tmp_test_outputs'
     agent = mocker.Mock()
     agent.build_graph.return_value = {'saver': 'config'}
     mocker.patch('deeprl.learner.EpochLogger.setup_tf_saver')
     learner = Learner(agent, continuous_env, steps_per_epoch=1000,
-                      epochs=4, output_dir='tests/tmp_test_outputs',
+                      epochs=4, output_dir=output_dir,
                       exp_name='learner_test')
     learner.logger.save_config = mocker.Mock()
     learner.logger.setup_tf_saver = mocker.Mock()
