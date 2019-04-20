@@ -20,6 +20,7 @@ def replay_buffer(buffer_size):
 
 @pytest.fixture
 def to_store():
+    """ argument for replay_buffer.store """
     return {'obs': np.array([1, 2, 3]), 'rew': 1.2, 'val': 3.4}
 
 def test_initialize_buf_smoke(buffer_size, replay_buffer):
@@ -132,15 +133,27 @@ def test_zeros(buffer_size, replay_buffer):
     assert ret.shape == (buffer_size, 2)
 
 
-def test_normalize_advantage(buffer_size, replay_buffer, to_store):
+def test_normalize_advantage(replay_buffer, to_store):
     """ test normalizing the advantage """
+    n_stored = 4
     replay_buffer.store(to_store)
-    replay_buffer.buf['adv'] = 12. + 3*np.random.randn(buffer_size)
-    adv = replay_buffer.buf['adv']
+    replay_buffer.store_ctr = n_stored
+    replay_buffer.buf['adv'] = 12. + 3*np.random.randn(n_stored)
+    adv = replay_buffer.buf['adv'][:replay_buffer.n_stored]
     assert adv.mean() != pytest.approx(0.)
     assert adv.std() != pytest.approx(1.)
     replay_buffer.normalize_advantage()
     # after normalizing, mean should be 0, std 1
-    adv = replay_buffer.buf['adv']
+    adv = replay_buffer.buf['adv'][:replay_buffer.n_stored]
     assert adv.mean() == pytest.approx(0.)
     assert adv.std() == pytest.approx(1.)
+
+
+def test_n_stored(buffer_size, replay_buffer):
+    """ test n_stored property """
+    replay_buffer.store_ctr = 3
+    assert replay_buffer.n_stored == 3
+    replay_buffer.store_ctr = buffer_size
+    assert replay_buffer.n_stored == buffer_size
+    replay_buffer.store_ctr = 2*buffer_size
+    assert replay_buffer.n_stored == buffer_size

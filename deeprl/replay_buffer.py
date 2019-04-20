@@ -28,6 +28,7 @@ class ReplayBuffer:
         self.store_ctr += 1
 
     def update_path_advantage(self, path_slice, last_val):
+        """ calculate the advantage over the path and store in buffer """
         trajectory_rews = self.buf['rew'][path_slice]
         trajectory_vals = self.buf['val'][path_slice]
         self.buf['adv'][path_slice] = advantage_function(
@@ -35,15 +36,14 @@ class ReplayBuffer:
             lam=self.lam, last_val=last_val)
 
     def update_path_rewards_to_go(self, path_slice, last_val):
-        # the next line computes rewards-to-go, to be targets
-        # for the value function
+        """ computes rewards-to-go, to be targets for the value function """
         trajectory_rews = self.buf['rew'][path_slice]
         self.buf['ret'][path_slice] = rewards_to_go(
             trajectory_rews, gamma=self.gamma, last_val=last_val)
 
     def update_path_next_obs(self, path_slice, last_obs):
-        # fill in the next observations (which we've been ignoring during
-        # the episode)
+        """ fill in the next observations (which we've been ignoring during
+        the episode) """
         path_obs = self.buf['obs'][path_slice]
         path_next_obs = np.vstack([
             path_obs[1:, :],
@@ -68,8 +68,9 @@ class ReplayBuffer:
 
     def normalize_advantage(self):
         """ implements the advantage normalization trick """
-        self.buf['adv'] = (self.buf['adv']
-                           - self.buf['adv'].mean())/self.buf['adv'].std()
+        adv = self.buf['adv'][:self.n_stored]
+        normalized_adv = (adv - adv.mean()) / adv.std()
+        self.buf['adv'][:self.n_stored] = normalized_adv
 
     def initialize_buf(self, to_buffer):
         """ Initialize the buffer storage based on the shapes of the
@@ -93,12 +94,14 @@ class ReplayBuffer:
         return self.store_ctr % self.buffer_size
 
     @property
-    def n_stored_experiences(self):
-        """ tells us how many experiences are currently stored in the
-        buffer """
+    def n_stored(self):
+        """ number of experiences (steps) currently stored in the buffer """
         return min(self.store_ctr, self.buffer_size)
 
     @property
     def path_slice(self):
         """ slice of current episode """
+        # the or is here in case we reach the end of the buffer, in which case
+        # self.ptr wraps around. In that case, self.ptr = 0, whereas we
+        # want the path to end at self.buffer_size
         return slice(self.path_start_idx, self.ptr or self.buffer_size)
