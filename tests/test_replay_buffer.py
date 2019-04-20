@@ -60,7 +60,9 @@ def test_finish_path_smoke(replay_buffer):
     np.testing.assert_equal(
         replay_buffer.buf['next_obs'][4], np.array([4, 5, 6]))
     for _ in range(5):
+        print(replay_buffer.ptr)
         replay_buffer.store(to_buffer)
+    print(replay_buffer.ptr)
     replay_buffer.finish_path(last_val=0, last_obs=np.array([4, 5, 6]))
     np.testing.assert_equal(
         replay_buffer.buf['obs'][6], replay_buffer.buf['next_obs'][5])
@@ -88,7 +90,7 @@ def test_dump(buffer_size, replay_buffer):
     to_buffer = {'obs': np.array([1, 2, 3]), 'rew': 1.2, 'val': 3.4}
     for _ in range(buffer_size):
         replay_buffer.store(to_buffer)
-    assert replay_buffer.ptr == buffer_size
+    assert replay_buffer.store_ctr == buffer_size
     buf = replay_buffer.dump()
     rew = 1.2*np.ones(buffer_size, dtype=np.float32)
     np.testing.assert_allclose(buf['rew'], rew)
@@ -105,7 +107,8 @@ def test_ptr_wraps_around(buffer_size, replay_buffer):
     for _ in range(buffer_size):
         replay_buffer.store(epoch0_store)
     replay_buffer.finish_path(last_val=0, last_obs=np.array([4, 5, 6]))
-    assert replay_buffer.ptr == buffer_size
+    assert replay_buffer.store_ctr == buffer_size
+    assert replay_buffer.ptr == 0
     assert replay_buffer.buf['val'][0] == pytest.approx(3.4)
     replay_buffer.store(epoch1_store)
     assert replay_buffer.ptr == 1

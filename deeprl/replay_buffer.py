@@ -12,48 +12,57 @@ class ReplayBuffer:
 
     def __init__(self, buffer_size, epoch_size=None, gamma=0.99, lam=0.95):
         self.gamma, self.lam = gamma, lam
-        self.buffer_size, self.path_start_idx, self.ptr = buffer_size, 0, 0
+        self.buffer_size, self.path_start_idx = buffer_size, 0
         self.epoch_size = epoch_size or buffer_size
         if buffer_size % self.epoch_size != 0:
             raise NotImplementedError("Buffer size which is not integer "
                                       "multiple of epoch size not supported")
-        self.buf = None
+        self.store_ctr, self.buf = 0, None
 
     def store(self, to_buffer):
         """ Push values from a single timestep into the buffer """
-        self.ptr = self.ptr % self.buffer_size
         if not self.buf:
             self.buf = self.initialize_buf(to_buffer)
         for key, val in to_buffer.items():
             self.buf[key][self.ptr] = val
-        self.ptr += 1
+        self.store_ctr += 1
 
-    def finish_path(self, last_val=0, last_obs=None):
-        """ Upon completing an episode, calculate the advantage and
-        rewards-to-go """
-        path_slice = slice(self.path_start_idx, self.ptr)
+    def update_path_advantage(self, path_slice, last_val):
         trajectory_rews = self.buf['rew'][path_slice]
         trajectory_vals = self.buf['val'][path_slice]
         self.buf['adv'][path_slice] = advantage_function(
             trajectory_rews, trajectory_vals, gamma=self.gamma,
             lam=self.lam, last_val=last_val)
+
+    def update_path_rewards_to_go(self, path_slice, last_val):
         # the next line computes rewards-to-go, to be targets
         # for the value function
+        trajectory_rews = self.buf['rew'][path_slice]
         self.buf['ret'][path_slice] = rewards_to_go(
             trajectory_rews, gamma=self.gamma, last_val=last_val)
+
+    def update_path_next_obs(self, path_slice, last_obs):
         # fill in the next observations (which we've been ignoring during
-        # the trajectory)
-        print(self.buf['obs'].shape)
-        print(self.buf['next_obs'].shape)
-        self.buf['next_obs'][path_slice] = np.vstack(
-            [self.buf['obs'][self.path_start_idx+1:self.ptr, :],
-             last_obs[np.newaxis, :]])
+        # the episode)
+        path_obs = self.buf['obs'][path_slice]
+        path_next_obs = np.vstack([
+            path_obs[1:, :],
+            last_obs[np.newaxis, :]
+        ])
+        self.buf['next_obs'][path_slice] = path_next_obs
+
+    def finish_path(self, last_val=0, last_obs=None):
+        """ Upon completing an episode, calculate the advantage and
+        rewards-to-go """
+        self.update_path_advantage(self.path_slice, last_val)
+        self.update_path_rewards_to_go(self.path_slice, last_val)
+        self.update_path_next_obs(self.path_slice, last_obs)
         self.path_start_idx = self.ptr
 
     def dump(self):
         """ Dump the contents of the buffer, and reset the pointer """
-        assert self.ptr == self.buffer_size
-        self.ptr, self.path_start_idx = 0, 0 #re-initialize buffer
+        assert self.store_ctr == self.buffer_size
+        self.store_ctr, self.path_start_idx = 0, 0 #re-initialize buffer
         self.normalize_advantage()
         return self.buf
 
@@ -76,3 +85,20 @@ class ReplayBuffer:
         shape (buffer_size, *(val shape)) """
         return np.zeros(combined_shape(self.buffer_size, val),
                         dtype=np.float32)
+
+    @property
+    def ptr(self):
+        """ pointer, points to the index in the buffer to store the next
+        experience """
+        return self.store_ctr % self.buffer_size
+
+    @property
+    def n_stored_experiences(self):
+        """ tells us how many experiences are currently stored in the
+        buffer """
+        return min(self.store_ctr, self.buffer_size)
+
+    @property
+    def path_slice(self):
+        """ slice of current episode """
+        return slice(self.path_start_idx, self.ptr or self.buffer_size)
