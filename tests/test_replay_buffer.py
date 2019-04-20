@@ -18,6 +18,10 @@ def replay_buffer(buffer_size):
     return ReplayBuffer(buffer_size)
 
 
+@pytest.fixture
+def to_store():
+    return {'obs': np.array([1, 2, 3]), 'rew': 1.2, 'val': 3.4}
+
 def test_initialize_buf_smoke(buffer_size, replay_buffer):
     """ smoke test initialize_buf """
     to_buffer = {'obs': np.array([1, 2, 3]), 'rew': 1.2, 'logp': 3.4}
@@ -123,3 +127,17 @@ def test_zeros(buffer_size, replay_buffer):
     val = np.array([0, 0])
     ret = replay_buffer.zeros(val)
     assert ret.shape == (buffer_size, 2)
+
+
+def test_normalize_advantage(buffer_size, replay_buffer, to_store):
+    """ test normalizing the advantage """
+    replay_buffer.store(to_store)
+    replay_buffer.buf['adv'] = 12. + 3*np.random.randn(buffer_size)
+    adv = replay_buffer.buf['adv']
+    assert adv.mean() != pytest.approx(0.)
+    assert adv.std() != pytest.approx(1.)
+    replay_buffer.normalize_advantage()
+    # after normalizing, mean should be 0, std 1
+    adv = replay_buffer.buf['adv']
+    assert adv.mean() == pytest.approx(0.)
+    assert adv.std() == pytest.approx(1.)

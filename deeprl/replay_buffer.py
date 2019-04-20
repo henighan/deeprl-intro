@@ -5,7 +5,7 @@ from deeprl.utils.math import (advantage_function,
 
 
 class ReplayBuffer:
-    """ Stores an Epoch's worth of experience (rewards, observations,
+    """ Stores an episode experience (rewards, observations,
     actions, etc), calculates the advantage and rewards-to-go at the end of
     trajectories. These stored values can then be used for training by the
     agent """
@@ -54,10 +54,13 @@ class ReplayBuffer:
         """ Dump the contents of the buffer, and reset the pointer """
         assert self.ptr == self.buffer_size
         self.ptr, self.path_start_idx = 0, 0 #re-initialize buffer
-        # the next line implements the advantage normalization trick
+        self.normalize_advantage()
+        return self.buf
+
+    def normalize_advantage(self):
+        """ implements the advantage normalization trick """
         self.buf['adv'] = (self.buf['adv']
                            - self.buf['adv'].mean())/self.buf['adv'].std()
-        return self.buf
 
     def initialize_buf(self, to_buffer):
         """ Initialize the buffer storage based on the shapes of the
