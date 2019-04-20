@@ -1,6 +1,6 @@
 """ Replay Buffer """
 import numpy as np
-from deeprl.utils.math import (advantage_function, discount_cumsum,
+from deeprl.utils.math import (advantage_function,
                                combined_shape, rewards_to_go)
 
 
@@ -16,7 +16,7 @@ class ReplayBuffer:
         self.epoch_size = epoch_size or buffer_size
         if buffer_size % self.epoch_size != 0:
             raise NotImplementedError("Buffer size which is not integer "
-                "multiple of epoch size not supported")
+                                      "multiple of epoch size not supported")
         self.buf = None
 
     def store(self, to_buffer):

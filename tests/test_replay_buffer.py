@@ -78,3 +78,10 @@ def test_ptr_wraps_around(buffer_size, replay_buffer):
     replay_buffer.store(epoch1_store)
     assert replay_buffer.ptr == 1
     assert replay_buffer.buf['val'][0] == pytest.approx(1.4)
+
+
+def test_raises_notimp_if_buffer_not_multiple_of_epoch_size():
+    """ If the buffer size is not an integer mutiple of
+    the epoch size, this should raise an error. """
+    with pytest.raises(NotImplementedError):
+        ret = ReplayBuffer(buffer_size=3, epoch_size=2)
