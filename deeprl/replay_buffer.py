@@ -10,14 +10,18 @@ class ReplayBuffer:
     trajectories. These stored values can then be used for training by the
     agent """
 
-    def __init__(self, size, gamma=0.99, lam=0.95):
-        self.max_size, self.path_start_idx, self.ptr = size, 0, 0
+    def __init__(self, buffer_size, epoch_size=None, gamma=0.99, lam=0.95):
         self.gamma, self.lam = gamma, lam
+        self.buffer_size, self.path_start_idx, self.ptr = buffer_size, 0, 0
+        self.epoch_size = epoch_size or buffer_size
+        if buffer_size % self.epoch_size != 0:
+            raise NotImplementedError("Buffer size which is not integer "
+                "multiple of epoch size not supported")
         self.buf = None
 
     def store(self, to_buffer):
         """ Push values from a single timestep into the buffer """
-        assert not self.full # make sure buffer isn't full already
+        self.ptr = self.ptr % self.buffer_size
         if not self.buf:
             self.buf = self.initialize_buf(to_buffer)
         for key, val in to_buffer.items():
@@ -39,9 +43,9 @@ class ReplayBuffer:
             trajectory_rews, gamma=self.gamma, last_val=last_val)
         self.path_start_idx = self.ptr
 
-    def get(self):
+    def dump(self):
         """ Dump the contents of the buffer, and reset the pointer """
-        assert self.ptr == self.max_size
+        assert self.ptr == self.buffer_size
         self.ptr, self.path_start_idx = 0, 0 #re-initialize buffer
         # the next line implements the advantage normalization trick
         self.buf['adv'] = (self.buf['adv']
@@ -56,12 +60,8 @@ class ReplayBuffer:
         return {**buf, **{key: self.zeros(val)
                           for key, val in to_buffer.items()}}
 
-    @property
-    def full(self):
-        """ boolean specifying if the buffer is full """
-        return self.ptr >= self.max_size
-
     def zeros(self, val):
         """ Creates numpy array of zeros of
-        shape (max_size, *(val shape)) """
-        return np.zeros(combined_shape(self.max_size, val), dtype=np.float32)
+        shape (buffer_size, *(val shape)) """
+        return np.zeros(combined_shape(self.buffer_size, val),
+                        dtype=np.float32)
