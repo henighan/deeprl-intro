@@ -157,3 +157,14 @@ def test_n_stored(buffer_size, replay_buffer):
     assert replay_buffer.n_stored == buffer_size
     replay_buffer.store_ctr = 2*buffer_size
     assert replay_buffer.n_stored == buffer_size
+
+
+def test_sample_batch(buffer_size, replay_buffer, to_store):
+    """ test sample_batch """
+    batch_size = 2
+    for _ in range(4):
+        replay_buffer.store(to_store)
+    replay_buffer.finish_path(last_val=0, last_obs=to_store['obs'])
+    ret = replay_buffer.sample_batch(batch_size)
+    assert len(ret['val']) == batch_size
+    np.testing.assert_allclose(ret['val'], np.array(2*[to_store['val']]))

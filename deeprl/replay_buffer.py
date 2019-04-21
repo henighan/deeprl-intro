@@ -10,7 +10,8 @@ class ReplayBuffer:
     trajectories. These stored values can then be used for training by the
     agent """
 
-    def __init__(self, buffer_size, epoch_size=None, gamma=0.99, lam=0.95):
+    def __init__(self, buffer_size, epoch_size=None, gamma=0.99, lam=0.95,
+                 batch_size=None):
         self.gamma, self.lam = gamma, lam
         self.buffer_size, self.path_start_idx = buffer_size, 0
         self.epoch_size = epoch_size or buffer_size
@@ -18,6 +19,7 @@ class ReplayBuffer:
             raise NotImplementedError("Buffer size which is not integer "
                                       "multiple of epoch size not supported")
         self.store_ctr, self.buf = 0, None
+        self.batch_size = batch_size
 
     def store(self, to_buffer):
         """ Push values from a single timestep into the buffer """
@@ -26,6 +28,39 @@ class ReplayBuffer:
         for key, val in to_buffer.items():
             self.buf[key][self.ptr] = val
         self.store_ctr += 1
+
+    def finish_path(self, last_val=0, last_obs=None):
+        """ Upon completing an episode, calculate the advantage and
+        rewards-to-go """
+        self.update_path_advantage(self.path_slice, last_val)
+        self.update_path_rewards_to_go(self.path_slice, last_val)
+        self.update_path_next_obs(self.path_slice, last_obs)
+        self.path_start_idx = self.ptr
+
+    def dump(self):
+        """ Dump the contents of the buffer, and reset the pointer """
+        assert self.store_ctr == self.buffer_size
+        self.store_ctr, self.path_start_idx = 0, 0 #re-initialize buffer
+        self.normalize_advantage()
+        return self.buf
+
+    def batches(self, n_batches):
+        """ generator of randomly-sampled minibatches of experience """
+        self.normalize_advantage()
+        for _ in range(n_batches):
+            yield self.sample_batch(self.batch_size)
+
+    def sample_batch(self, batch_size):
+        """ sample a batch of experiences from the buffer """
+        self.assert_path_finished()
+        batch_inds = np.random.randint(0, self.n_stored, batch_size)
+        return {key: val[batch_inds] for key, val in self.buf.items()}
+
+    def assert_path_finished(self):
+        """ raises an error if the most recent path has not be finished """
+        if self.ptr != self.path_start_idx:
+            raise RuntimeError('Most recent path has not been finished. '
+                               + 'Please call "finish_path"')
 
     def update_path_advantage(self, path_slice, last_val):
         """ calculate the advantage over the path and store in buffer """
@@ -50,21 +85,6 @@ class ReplayBuffer:
             last_obs[np.newaxis, :]
         ])
         self.buf['next_obs'][path_slice] = path_next_obs
-
-    def finish_path(self, last_val=0, last_obs=None):
-        """ Upon completing an episode, calculate the advantage and
-        rewards-to-go """
-        self.update_path_advantage(self.path_slice, last_val)
-        self.update_path_rewards_to_go(self.path_slice, last_val)
-        self.update_path_next_obs(self.path_slice, last_obs)
-        self.path_start_idx = self.ptr
-
-    def dump(self):
-        """ Dump the contents of the buffer, and reset the pointer """
-        assert self.store_ctr == self.buffer_size
-        self.store_ctr, self.path_start_idx = 0, 0 #re-initialize buffer
-        self.normalize_advantage()
-        return self.buf
 
     def normalize_advantage(self):
         """ implements the advantage normalization trick """
