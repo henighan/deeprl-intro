@@ -98,6 +98,17 @@ def test_dump(buffer_size, replay_buffer):
     assert replay_buffer.ptr == 0
 
 
+def test_dump_normalizes_advantage(buffer_size, replay_buffer, to_store):
+    """ seems I had a bug where dump was not normalizing the advantage """
+    for _ in range(buffer_size):
+        to_store['adv'] = 12 + 3*np.random.randn(1)[0]
+        replay_buffer.store(to_store)
+    buf = replay_buffer.dump()
+    # make sure the advantage was normalized
+    assert buf['adv'].mean() == pytest.approx(0., abs=1e-3)
+    assert buf['adv'].std() == pytest.approx(1., abs=1e-3)
+
+
 def test_ptr_wraps_around(buffer_size, replay_buffer):
     """ For off-policy agents, we'd like to store more than one epoch's
     worth of experience. We may want to keep the 3 most recent epochs, for

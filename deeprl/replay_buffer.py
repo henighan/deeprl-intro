@@ -40,8 +40,8 @@ class ReplayBuffer:
     def dump(self):
         """ Dump the contents of the buffer, and reset the pointer """
         assert self.store_ctr == self.buffer_size
-        self.store_ctr, self.path_start_idx = 0, 0 #re-initialize buffer
         self.normalize_advantage()
+        self.store_ctr, self.path_start_idx = 0, 0 #re-initialize buffer
         return self.buf
 
     def batches(self, n_batches):
