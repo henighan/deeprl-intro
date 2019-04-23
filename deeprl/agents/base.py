@@ -1,7 +1,7 @@
 """ Agent base class """
 import tensorflow as tf
 from gym.spaces import Box, Discrete
-from deeprl.utils.tf_utils import tfph
+from deeprl.utils.tf_utils import tfph, adam_opt
 
 
 class Base:
@@ -9,10 +9,12 @@ class Base:
 
     # placeholder keys for training
     train_ph_keys = ['obs', 'act', 'adv', 'ret']
-    # things from the agent to log at each timestep
-    log_each_step = {}
+    # estimators we want to send to the buffer at each timestep
+    to_buffer_each_step_dict = {'val': 'val', 'act': 'pi'}
+    # things from the agent to log at each timestep and column name to use
+    log_each_step = {'val': 'VVals'}
     # kwargs for logger.log_tabular
-    log_tabular_kwargs = {}
+    log_tabular_kwargs = {'VVals': {'with_min_and_max': True}}
     # if you want to evaluate the policy after each epoch, set this to true
     eval_after_epoch = False
 
@@ -22,9 +24,11 @@ class Base:
         self.activation = activation
         self.sess = sess or tf.Session()
         self.close_sess = close_sess
-        self.placeholders = {}
-        self.step_to_buffer = None
-        self.losses = None
+        self.placeholders = {} # to be filled in by create_placeholders
+        self.step_to_buffer = None # to be filled in by build_graph
+        self.estimators = None # to be filled in by build_graph
+        self.losses = None # to be filled in by build_graph
+        self.train_ops = None # to be filled in by build_graph
 
     def step(self, obs):
         """ sample action given observation of environment. returns two
@@ -79,6 +83,18 @@ class Base:
         the change in loss (delta losses) """
         return {'Delta' + key: new_val - initial_losses[key]
                 for key, new_val in new_losses.items()}
+
+    @staticmethod
+    def build_policy_gradient_loss(logp, placeholders, learning_rate):
+        """ build the graph for the policy loss """
+        pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
+        return pi_loss, adam_opt(pi_loss, learning_rate)
+
+    @staticmethod
+    def build_mse_loss(estimates, targets, learning_rate):
+        """ build the graph for the value function loss """
+        loss = tf.losses.mean_squared_error(estimates, targets)
+        return loss, adam_opt(loss, learning_rate)
 
     def __del__(self):
         """ close session when garbage collected """
