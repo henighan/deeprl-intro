@@ -35,8 +35,6 @@ class VPG(Base):
         buffer_dump = replay_buffer.dump()
         feed_dict = {self.placeholders[key]: buffer_dump[key]
                      for key in self.train_ph_keys}
-        print('mean: {}'.format(buffer_dump['adv'].mean()))
-        print('std: {}'.format(buffer_dump['adv'].std()))
         # calculate losses before training
         initial_losses = self.sess.run(self.losses, feed_dict=feed_dict)
         # update model parameters
