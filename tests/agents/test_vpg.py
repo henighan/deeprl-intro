@@ -39,47 +39,6 @@ class TestVPG(tf.test.TestCase):
         self.assertEqual(n_params, ret_n_params)
         self.assertEqual(sess_val.shape, (8,))
 
-    def test_build_val_loss_smoke(self):
-        """ Make sure the loss goes down when training, and that training
-        brings val closer to rets """
-        batch_size = 4
-        ret_ph = tf_utils.tfph(None)
-        ret = np.ones(batch_size)
-        val = tf.get_variable(
-            'val', dtype=tf.float32, trainable=True,
-            initializer=4*[0.])
-        loss, train_op = self.vpg.build_val_loss(val, ret_ph, 1e-3)
-        with self.cached_session() as sess:
-            sess.run(tf.global_variables_initializer())
-            old_loss = sess.run(loss, feed_dict={ret_ph: ret})
-            sess.run(train_op, feed_dict={ret_ph: ret})
-            new_loss = sess.run(loss, feed_dict={ret_ph: ret})
-            new_val = sess.run(val)
-        self.assertEqual(new_loss.shape, tuple())
-        self.assertLess(new_loss, old_loss)
-        self.assertTrue(all(new_val > 0))
-
-    def test_build_policy_loss_smoke(self):
-        """ Make sure the loss goes down when training, and that training
-        changes logp in the expected direction """
-        batch_size = 4
-        adv_ph = tfph(None)
-        adv = np.ones(batch_size)
-        logp = tf.get_variable(
-            'adv', dtype=tf.float32, trainable=True,
-            initializer=batch_size*[0.])
-        loss, train_op = self.vpg.build_policy_loss(
-            logp, {'adv': adv_ph}, learning_rate=1e-3)
-        with self.cached_session() as sess:
-            sess.run(tf.global_variables_initializer())
-            old_loss = sess.run(loss, feed_dict={adv_ph: adv})
-            sess.run(train_op, feed_dict={adv_ph: adv})
-            new_loss = sess.run(loss, feed_dict={adv_ph: adv})
-            new_logp = sess.run(logp)
-        self.assertEqual(new_loss.shape, tuple())
-        self.assertLess(new_loss, old_loss)
-        self.assertTrue(all(new_logp > 0))
-
     def test_build_graph_smoke(self):
         """ Smoke test for building the graph """
         self.vpg.build_graph(self.env.observation_space, self.env.action_space)

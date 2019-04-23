@@ -1,25 +1,23 @@
 """ Vanilla Policy Gradient Agent """
 import tensorflow as tf
 from gym.spaces import Box, Discrete
+
 from deeprl.policies.gaussian import mlp_gaussian_policy
 from deeprl.policies.categorical import mlp_categorical_policy
-from deeprl.utils.tf_utils import mlp, tfph
+from deeprl.utils.tf_utils import mlp, tfph, adam_opt
+from deeprl.agents.base import Base
 
 
-class VPG():
+class VPG(Base):
     """ Vanilla Policy Gradient Agent """
 
-    # placeholder keys for training
-    train_ph_keys = ['obs', 'act', 'adv', 'ret']
     # things to log at each timestep, and what column name to use
     log_each_step = {'val': 'VVals', 'logp': 'LogP'}
+    # estimators we want to send to the buffer on each step
+    to_buffer_each_step_dict = {'val': 'val', 'act': 'pi', 'logp': 'logp_pi'}
     # kwargs for logger.log_tabular
     log_tabular_kwargs = {'VVals': {'with_min_and_max': True},
-                          'LogP': {'with_min_and_max': True},
-                          'LossPi': {'average_only': True},
-                          'LossV': {'average_only': True},
-                          'DeltaLossPi': {'average_only': True},
-                          'DeltaLossV': {'average_only': True}}
+                          'LogP': {'with_min_and_max': True}}
     # since this is an on-policy algorithm, we instruct the learner
     # to not run additional episodes for evaluation, but evaluate performance
     # directly on the same episodes used for training
@@ -28,36 +26,27 @@ class VPG():
     def __init__(self, pi_lr=3e-4, val_lr=1e-3, hidden_sizes=(64, 64),
                  activation=tf.tanh, val_train_iters=80, sess=None,
                  close_sess=True):
+        super().__init__(hidden_sizes=hidden_sizes, activation=activation,
+                         sess=sess, close_sess=close_sess)
         self.pi_lr, self.val_lr = pi_lr, val_lr
-        self.hidden_sizes = hidden_sizes
-        self.activation = activation
         self.val_train_iters = val_train_iters
-        self.sess = sess or tf.Session()
-        self.close_sess = close_sess
-        self.placeholders = {}
-        self.step_to_buffer = None
-        self.pi_loss, self.pi_train_op = None, None
-        self.val_loss, self.val_train_op = None, None
 
-    def step(self, obs):
-        """ sample action given observation of environment. returns two
-        dictionaries. The first conains values we want stored in the buffer.
-        The second is values we want sent to the log """
-        feed_dict = {self.placeholders['obs']: obs.reshape(1, -1)}
-        to_buffer = self.sess.run(
-            self.step_to_buffer, feed_dict=feed_dict)
-        # sqeeze since this is a single timestep, not a batch
-        to_buffer = {key: val[0] for key, val in to_buffer.items()}
-        to_log = {log_column: to_buffer[key]
-                  for key, log_column in self.log_each_step.items()}
-        return to_buffer, to_log
-
-    def train(self, buf):
+    def train(self, replay_buffer):
         """ Train after epoch. Returns dict of things we want to have logged,
         including the Policy and Value losses, and the change in the losses
         due to training """
-        feed_dict = {self.placeholders[key]: buf[key]
+        feed_dict = {self.placeholders[key]: replay_buffer.dump()[key]
                      for key in self.train_ph_keys}
+        # calculate losses before training
+        initial_losses = self.sess.run(self.losses, feed_dict=feed_dict)
+        # update model parameters
+        update_to_logs = self.update_parameters(feed_dict)
+        # get updated losses, use to calculate the change in losses
+        new_losses = self.sess.run(self.losses, feed_dict=feed_dict)
+        delta_losses = self.delta_losses(initial_losses, new_losses)
+        return {**update_to_logs,
+                **initial_losses,
+                **delta_losses}
         # calculate losses before training
         old_pi_loss, old_val_loss = self.sess.run(
             (self.pi_loss, self.val_loss), feed_dict=feed_dict)
@@ -77,6 +66,13 @@ class VPG():
                 'DeltaLossPi': delta_pi_loss,
                 'DeltaLossV': delta_val_loss}
 
+    def update_parameters(self, feed_dict):
+        """ update agent model parameters and return dict of things
+        we want logged """
+        policy_to_logs = self.update_policy(feed_dict)
+        value_to_logs = self.update_value_function(feed_dict)
+        return {**policy_to_logs, **value_to_logs}
+
     def update_policy(self, feed_dict):
         """ update the policy based on the replay-buffer data (stored in
         feed_dict) """
@@ -93,43 +89,45 @@ class VPG():
     def build_graph(self, obs_space, act_space):
         """ Build the tensorflow graph """
         self.create_placeholders(obs_space, act_space)
-        """ sampled action, logprob of input action, and logprob of
-        sampled action """
-        pi, logp, logp_pi = self.build_policy(
-            act_space, self.placeholders['obs'], self.placeholders['act'],
-            self.hidden_sizes, self.activation)
-        # policy loss and train op
-        self.pi_loss, self.pi_train_op = self.build_policy_loss(
-            logp, self.placeholders, self.pi_lr)
-        # value function estimator
-        val = self.build_value_function(self.placeholders['obs'],
-                                        hidden_sizes=self.hidden_sizes,
-                                        activation=self.activation)
-        self.step_to_buffer = {'act': pi,
-                               'val': val,
-                               'logp': logp_pi}
-        # value function estimator loss and train op
-        self.val_loss, self.val_train_op = self.build_val_loss(
-            val, self.placeholders['ret'], learning_rate=self.val_lr)
+        self.estimators = self.build_estimators(
+            self.placeholders, obs_space, act_space)
+        # things we want to store in the buffer on each step
+        self.step_to_buffer = {buff_key: self.estimators[est_key]
+                               for buff_key, est_key
+                               in self.to_buffer_each_step_dict.items()}
+        # build losses and train ops
+        self.losses, self.train_ops = self.build_losses(
+            self.estimators, self.placeholders)
         self.sess.run(tf.global_variables_initializer())
         # returns kwargs for tf_saver
+        return self.tf_saver_kwargs(self.placeholders, self.estimators)
+
+    def build_estimators(self, placeholders, obs_space, act_space):
+        """ build the policy and value function """
+        pi, logp, logp_pi = self.build_policy(
+            act_space, placeholders['obs'], placeholders['act'],
+            self.hidden_sizes, self.activation)
+        val = self.build_value_function(placeholders['obs'],
+                                        hidden_sizes=self.hidden_sizes,
+                                        activation=self.activation)
+        return {'pi': pi, 'logp': logp, 'logp_pi': logp_pi, 'val': val}
+
+    def build_losses(self, estimators, placeholders):
+        """ build the value and policy losses and training ops """
+        pi_loss, pi_train_op = self.build_policy_gradient_loss(
+            estimators['logp'], placeholders, self.pi_lr)
+        val_loss, val_train_op = self.build_mse_loss(
+            estimators['val'], placeholders['ret'], self.val_lr)
+        losses = {'LossPi': pi_loss, 'LossVal': val_loss}
+        train_ops = {'LossPi': pi_train_op, 'LossVal': val_train_op}
+        return losses, train_ops
+
+    def tf_saver_kwargs(self, placeholders, estimators):
+        """ the kwargs for the logger tf_saver method """
+        outputs = {'pi': estimators['pi'], 'v': estimators['val']}
         return {'sess': self.sess,
                 'inputs': {'x': self.placeholders['obs']},
-                'outputs': {'pi': pi, 'v': val}}
-
-    def create_placeholders(self, obs_space, act_space):
-        """ Build the placeholders required for this agent """
-        self.placeholders['obs'] = tfph(obs_space.shape[-1], name='obs')
-        if isinstance(act_space, Box):
-            self.placeholders['act'] = tfph(act_space.shape[-1], name='act')
-        elif isinstance(act_space, Discrete):
-            self.placeholders['act'] = tf.placeholder(
-                dtype=tf.int64, shape=[None], name='act')
-        else:
-            raise NotImplementedError(
-                'action space {} not implemented'.format(act_space))
-        for name in ('ret', 'adv'):
-            self.placeholders[name] = tfph(None, name=name)
+                'outputs': outputs}
 
     @staticmethod
     def build_value_function(obs_ph, hidden_sizes, activation):
@@ -156,24 +154,3 @@ class VPG():
             return pi, logp, logp_pi
         raise NotImplementedError('action space {} not implemented'.format(
             act_space))
-
-    @staticmethod
-    def build_policy_loss(logp, placeholders, learning_rate):
-        """ build the graph for the policy loss """
-        pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
-        pi_train_op = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(pi_loss)
-        return pi_loss, pi_train_op
-
-    @staticmethod
-    def build_val_loss(val, ret_ph, learning_rate):
-        """ build the graph for the value function loss """
-        val_loss = tf.losses.mean_squared_error(val, ret_ph)
-        val_train_op = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(val_loss)
-        return val_loss, val_train_op
-
-    def __del__(self):
-        """ close session when garbage collected """
-        if self.sess and self.close_sess:
-            self.sess.close()
