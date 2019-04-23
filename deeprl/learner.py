@@ -108,6 +108,9 @@ class Learner():
         self.logger.log_tabular('EpLen', average_only=True)
         self.logger.log_tabular('TotalEnvInteracts', (epoch+1)*self.epoch_len)
         self.logger.log_tabular('Time', time.time()-start_time)
+        for loss_name in self.agent.losses.keys():
+            self.logger.log_tabular(loss_name, average_only=True)
+            self.logger.log_tabular('Delta' + loss_name, average_only=True)
         for column_name, kwargs in self.agent.log_tabular_kwargs.items():
             self.logger.log_tabular(column_name, **kwargs)
         self.logger.dump_tabular()

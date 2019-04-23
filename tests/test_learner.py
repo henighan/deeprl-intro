@@ -91,6 +91,21 @@ def test_play_episode_testing_true(mocker, learner, agent_step_ret):
     learner.logger.store.assert_called_once_with(TestEpRet=0., TestEpLen=2)
 
 
+def test_log_epoch(mocker, learner):
+    """ smoke test log_epoch """
+    logtab_mock = mocker.patch('deeprl.learner.EpochLogger.log_tabular')
+    dump_mock = mocker.patch('deeprl.learner.EpochLogger.dump_tabular')
+    learner.agent.losses = {'LossPi': None, 'LossVal': None}
+    learner.agent.log_tabular_kwargs = {'VVals': {'with_min_and_max': True}}
+    learner.log_epoch(epoch=10, start_time=time.time())
+    dump_mock.assert_called_once()
+    call_args = logtab_mock.call_args_list
+    assert mocker.call('Epoch', 10) in call_args
+    assert mocker.call('LossPi', average_only=True) in call_args
+    assert mocker.call('DeltaLossPi', average_only=True) in call_args
+    assert mocker.call('VVals', with_min_and_max=True) in call_args
+
+
 def test_learner_smoke(mocker, continuous_env, agent_step_ret):
     """ Give it a a test run witha mock agent, see that is produces logs """
     output_dir = 'tests/tmp_test_outputs'
@@ -109,6 +124,7 @@ def test_learner_smoke(mocker, continuous_env, agent_step_ret):
                                         'LossV': random.random(),
                                         'DeltaLossPi': -0.01*random.random(),
                                         'DeltaLossV': -0.01*random.random()}
+    learner.agent.losses.keys.return_value = ['LossPi', 'LossV']
     output_path = os.path.join(output_dir, 'progress.txt')
     start_time = time.time()
     learner.learn()
