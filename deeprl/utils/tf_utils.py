@@ -26,3 +26,9 @@ def tfph(size, name=None):
     """ create tensorflow placeholder """
     shape = [None, size] if size else [None]
     return tf.placeholder(dtype=tf.float32, shape=shape, name=name)
+
+
+def adam_opt(loss, learning_rate):
+    """ Convenience function for optimizing a loss with Adam """
+    return tf.train.AdamOptimizer(
+        learning_rate=learning_rate).minimize(loss)
