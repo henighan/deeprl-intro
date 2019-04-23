@@ -82,7 +82,7 @@ class Learner():
     def train_epoch(self):
         """ run agent training for this epoch """
         to_log = self.agent.train(
-            self.buffer.dump())
+            self.buffer)
         self.logger.store(**to_log)
 
     def test_epoch(self):

@@ -1,7 +1,11 @@
 """ Agent base class """
 import tensorflow as tf
+
 from gym.spaces import Box, Discrete
+
 from deeprl.utils.tf_utils import tfph, adam_opt
+from deeprl.policies.gaussian import mlp_gaussian_policy
+from deeprl.policies.categorical import mlp_categorical_policy
 
 
 class Base:
@@ -43,7 +47,7 @@ class Base:
                   for key, log_column in self.log_each_step.items()}
         return to_buffer, to_log
 
-    def train(self, buf):
+    def train(self, replay_buffer):
         """ Train agent after epoch.
         This method should do 4 things:
             1. calculate losses before updating parameters
@@ -67,15 +71,45 @@ class Base:
         for name in ('ret', 'adv'):
             self.placeholders[name] = tfph(None, name=name)
 
-    def update_parameters(self):
+    def update_parameters(self, feed_dict):
         """ This function should perform the parameter updates for a single
         epoch and return a dictionary of values we wish to be logged """
         raise NotImplementedError("must implement 'update_parameters'")
 
     def build_graph(self, obs_space, act_space):
-        """ Build the tensorflow graph and return the kwargs for the
-        logger tf_saver """
-        raise NotImplementedError("'build_graph' must be implemented")
+        """ Build the tensorflow graph """
+        self.create_placeholders(obs_space, act_space)
+        self.estimators = self.build_estimators(
+            self.placeholders, obs_space, act_space)
+        # things we want to store in the buffer on each step
+        self.step_to_buffer = {buff_key: self.estimators[est_key]
+                               for buff_key, est_key
+                               in self.to_buffer_each_step_dict.items()}
+        # build losses and train ops
+        self.losses, self.train_ops = self.build_losses(
+            self.estimators, self.placeholders)
+        self.sess.run(tf.global_variables_initializer())
+        # returns kwargs for tf_saver
+        return self.tf_saver_kwargs(self.placeholders, self.estimators)
+
+    def build_estimators(placeholders, obs_space, act_space):
+        """ build the estimators and return in dictionary. Examples include
+        estimators of the value function, action-value function, and
+        the optimal policy """
+        raise NotImplementedError(
+            '"build_estimators" method must be implemented')
+
+    def build_losses(estimators, placeholders):
+        """ build the losses and their training ops and return as dicts """
+        raise NotImplementedError(
+            '"build_losses" method must be implemented')
+
+    def tf_saver_kwargs(self, placeholders, estimators):
+        """ the kwargs for the logger tf_saver method """
+        outputs = {'pi': estimators['pi'], 'v': estimators['val']}
+        return {'sess': self.sess,
+                'inputs': {'x': self.placeholders['obs']},
+                'outputs': outputs}
 
     @staticmethod
     def delta_losses(initial_losses, new_losses):
@@ -95,6 +129,24 @@ class Base:
         """ build the graph for the value function loss """
         loss = tf.losses.mean_squared_error(estimates, targets)
         return loss, adam_opt(loss, learning_rate)
+
+    @staticmethod
+    def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
+        """ build the graph for the policy """
+        if isinstance(act_space, Box):
+            with tf.variable_scope('pi'):
+                pi, logp, logp_pi = mlp_gaussian_policy(
+                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
+                    activation=activation, action_space=act_space)
+            return pi, logp, logp_pi
+        if isinstance(act_space, Discrete):
+            with tf.variable_scope('pi'):
+                pi, logp, logp_pi = mlp_categorical_policy(
+                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
+                    activation=activation, action_space=act_space)
+            return pi, logp, logp_pi
+        raise NotImplementedError('action space {} not implemented'.format(
+            act_space))
 
     def __del__(self):
         """ close session when garbage collected """

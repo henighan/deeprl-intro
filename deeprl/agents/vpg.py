@@ -1,10 +1,7 @@
 """ Vanilla Policy Gradient Agent """
 import tensorflow as tf
-from gym.spaces import Box, Discrete
 
-from deeprl.policies.gaussian import mlp_gaussian_policy
-from deeprl.policies.categorical import mlp_categorical_policy
-from deeprl.utils.tf_utils import mlp, tfph, adam_opt
+from deeprl.utils.tf_utils import mlp
 from deeprl.agents.base import Base
 
 
@@ -35,8 +32,11 @@ class VPG(Base):
         """ Train after epoch. Returns dict of things we want to have logged,
         including the Policy and Value losses, and the change in the losses
         due to training """
-        feed_dict = {self.placeholders[key]: replay_buffer.dump()[key]
+        buffer_dump = replay_buffer.dump()
+        feed_dict = {self.placeholders[key]: buffer_dump[key]
                      for key in self.train_ph_keys}
+        print('mean: {}'.format(buffer_dump['adv'].mean()))
+        print('std: {}'.format(buffer_dump['adv'].std()))
         # calculate losses before training
         initial_losses = self.sess.run(self.losses, feed_dict=feed_dict)
         # update model parameters
@@ -47,24 +47,6 @@ class VPG(Base):
         return {**update_to_logs,
                 **initial_losses,
                 **delta_losses}
-        # calculate losses before training
-        old_pi_loss, old_val_loss = self.sess.run(
-            (self.pi_loss, self.val_loss), feed_dict=feed_dict)
-        # update policy
-        policy_to_logs = self.update_policy(feed_dict)
-        # update value function
-        value_to_logs = self.update_value_function(feed_dict)
-        # calculate change in loss
-        new_pi_loss, new_val_loss = self.sess.run(
-            (self.pi_loss, self.val_loss), feed_dict=feed_dict)
-        delta_pi_loss = new_pi_loss - old_pi_loss
-        delta_val_loss = new_val_loss - old_val_loss
-        return {**policy_to_logs,
-                **value_to_logs,
-                'LossPi': old_pi_loss,
-                'LossV': old_val_loss,
-                'DeltaLossPi': delta_pi_loss,
-                'DeltaLossV': delta_val_loss}
 
     def update_parameters(self, feed_dict):
         """ update agent model parameters and return dict of things
@@ -76,31 +58,15 @@ class VPG(Base):
     def update_policy(self, feed_dict):
         """ update the policy based on the replay-buffer data (stored in
         feed_dict) """
-        self.sess.run(self.pi_train_op, feed_dict=feed_dict)
+        self.sess.run(self.train_ops['LossPi'], feed_dict=feed_dict)
         return {}
 
     def update_value_function(self, feed_dict):
         """ update the policy based on the replay-buffer data (stored in
         feed_dict) """
         for _ in range(self.val_train_iters):
-            self.sess.run(self.val_train_op, feed_dict=feed_dict)
+            self.sess.run(self.train_ops['LossVVals'], feed_dict=feed_dict)
         return {}
-
-    def build_graph(self, obs_space, act_space):
-        """ Build the tensorflow graph """
-        self.create_placeholders(obs_space, act_space)
-        self.estimators = self.build_estimators(
-            self.placeholders, obs_space, act_space)
-        # things we want to store in the buffer on each step
-        self.step_to_buffer = {buff_key: self.estimators[est_key]
-                               for buff_key, est_key
-                               in self.to_buffer_each_step_dict.items()}
-        # build losses and train ops
-        self.losses, self.train_ops = self.build_losses(
-            self.estimators, self.placeholders)
-        self.sess.run(tf.global_variables_initializer())
-        # returns kwargs for tf_saver
-        return self.tf_saver_kwargs(self.placeholders, self.estimators)
 
     def build_estimators(self, placeholders, obs_space, act_space):
         """ build the policy and value function """
@@ -118,16 +84,9 @@ class VPG(Base):
             estimators['logp'], placeholders, self.pi_lr)
         val_loss, val_train_op = self.build_mse_loss(
             estimators['val'], placeholders['ret'], self.val_lr)
-        losses = {'LossPi': pi_loss, 'LossVal': val_loss}
-        train_ops = {'LossPi': pi_train_op, 'LossVal': val_train_op}
+        losses = {'LossPi': pi_loss, 'LossVVals': val_loss}
+        train_ops = {'LossPi': pi_train_op, 'LossVVals': val_train_op}
         return losses, train_ops
-
-    def tf_saver_kwargs(self, placeholders, estimators):
-        """ the kwargs for the logger tf_saver method """
-        outputs = {'pi': estimators['pi'], 'v': estimators['val']}
-        return {'sess': self.sess,
-                'inputs': {'x': self.placeholders['obs']},
-                'outputs': outputs}
 
     @staticmethod
     def build_value_function(obs_ph, hidden_sizes, activation):
@@ -136,21 +95,3 @@ class VPG(Base):
             val = mlp(obs_ph, hidden_sizes=hidden_sizes + (1,),
                       activation=activation)
         return tf.reshape(val, [-1])
-
-    @staticmethod
-    def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
-        """ build the graph for the policy """
-        if isinstance(act_space, Box):
-            with tf.variable_scope('pi'):
-                pi, logp, logp_pi = mlp_gaussian_policy(
-                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
-                    activation=activation, action_space=act_space)
-            return pi, logp, logp_pi
-        if isinstance(act_space, Discrete):
-            with tf.variable_scope('pi'):
-                pi, logp, logp_pi = mlp_categorical_policy(
-                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
-                    activation=activation, action_space=act_space)
-            return pi, logp, logp_pi
-        raise NotImplementedError('action space {} not implemented'.format(
-            act_space))
