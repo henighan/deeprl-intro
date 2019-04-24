@@ -1,8 +1,12 @@
 """ Vanilla Policy Gradient Agent """
 import tensorflow as tf
 
-from deeprl.utils.tf_utils import mlp
+from gym.spaces import Box, Discrete
+
+from deeprl.utils.tf_utils import mlp, adam_opt
 from deeprl.agents.base import Base
+from deeprl.policies.gaussian import mlp_gaussian_policy
+from deeprl.policies.categorical import mlp_categorical_policy
 
 
 class VPG(Base):
@@ -78,7 +82,7 @@ class VPG(Base):
 
     def build_losses(self, estimators, placeholders):
         """ build the value and policy losses and training ops """
-        pi_loss, pi_train_op = self.build_policy_gradient_loss(
+        pi_loss, pi_train_op = self.build_policy_loss(
             estimators['logp'], placeholders, self.pi_lr)
         val_loss, val_train_op = self.build_mse_loss(
             estimators['val'], placeholders['ret'], self.val_lr)
@@ -93,3 +97,27 @@ class VPG(Base):
             val = mlp(obs_ph, hidden_sizes=hidden_sizes + (1,),
                       activation=activation)
         return tf.reshape(val, [-1])
+
+    @staticmethod
+    def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
+        """ build the graph for the policy """
+        if isinstance(act_space, Box):
+            with tf.variable_scope('pi'):
+                pi, logp, logp_pi = mlp_gaussian_policy(
+                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
+                    activation=activation, action_space=act_space)
+            return pi, logp, logp_pi
+        if isinstance(act_space, Discrete):
+            with tf.variable_scope('pi'):
+                pi, logp, logp_pi = mlp_categorical_policy(
+                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
+                    activation=activation, action_space=act_space)
+            return pi, logp, logp_pi
+        raise NotImplementedError('action space {} not implemented'.format(
+            act_space))
+
+    @staticmethod
+    def build_policy_loss(logp, placeholders, learning_rate):
+        """ build the graph for the policy loss """
+        pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
+        return pi_loss, adam_opt(pi_loss, learning_rate)

@@ -4,8 +4,6 @@ import tensorflow as tf
 from gym.spaces import Box, Discrete
 
 from deeprl.utils.tf_utils import tfph, adam_opt
-from deeprl.policies.gaussian import mlp_gaussian_policy
-from deeprl.policies.categorical import mlp_categorical_policy
 
 
 class Base:
@@ -92,14 +90,14 @@ class Base:
         # returns kwargs for tf_saver
         return self.tf_saver_kwargs(self.placeholders, self.estimators)
 
-    def build_estimators(placeholders, obs_space, act_space):
+    def build_estimators(self, placeholders, obs_space, act_space):
         """ build the estimators and return in dictionary. Examples include
         estimators of the value function, action-value function, and
         the optimal policy """
         raise NotImplementedError(
             '"build_estimators" method must be implemented')
 
-    def build_losses(estimators, placeholders):
+    def build_losses(self, estimators, placeholders):
         """ build the losses and their training ops and return as dicts """
         raise NotImplementedError(
             '"build_losses" method must be implemented')
@@ -119,34 +117,10 @@ class Base:
                 for key, new_val in new_losses.items()}
 
     @staticmethod
-    def build_policy_gradient_loss(logp, placeholders, learning_rate):
-        """ build the graph for the policy loss """
-        pi_loss = tf.reduce_mean(-logp*placeholders['adv'])
-        return pi_loss, adam_opt(pi_loss, learning_rate)
-
-    @staticmethod
     def build_mse_loss(estimates, targets, learning_rate):
         """ build the graph for the value function loss """
         loss = tf.losses.mean_squared_error(estimates, targets)
         return loss, adam_opt(loss, learning_rate)
-
-    @staticmethod
-    def build_policy(act_space, obs_ph, act_ph, hidden_sizes, activation):
-        """ build the graph for the policy """
-        if isinstance(act_space, Box):
-            with tf.variable_scope('pi'):
-                pi, logp, logp_pi = mlp_gaussian_policy(
-                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
-                    activation=activation, action_space=act_space)
-            return pi, logp, logp_pi
-        if isinstance(act_space, Discrete):
-            with tf.variable_scope('pi'):
-                pi, logp, logp_pi = mlp_categorical_policy(
-                    obs_ph, act_ph, hidden_sizes=hidden_sizes,
-                    activation=activation, action_space=act_space)
-            return pi, logp, logp_pi
-        raise NotImplementedError('action space {} not implemented'.format(
-            act_space))
 
     def __del__(self):
         """ close session when garbage collected """
