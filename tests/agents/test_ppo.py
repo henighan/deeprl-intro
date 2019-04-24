@@ -5,7 +5,6 @@ import gym
 
 from deeprl.agents import PPO
 
-from deeprl.utils import tf_utils
 from deeprl.utils.tf_utils import tfph
 
 
@@ -69,7 +68,7 @@ class TestPPO(tf.test.TestCase):
             self.assertAlmostEqual(init_kl, 0)
             sess.run(pi_train_op, feed_dict=feed_dict)
             after_loss, after_kl = sess.run((pi_loss, self.ppo.kl_divergence),
-                                          feed_dict=feed_dict)
+                                            feed_dict=feed_dict)
             # ensure the loss went down
             self.assertLess(after_loss, init_loss)
             delta_logp = sess.run(logp) - logp_old

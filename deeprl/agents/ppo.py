@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from deeprl.agents import VPG
 from deeprl.common import LOGGER_NAME
-from deeprl.utils.tf_utils import tfph
+from deeprl.utils.tf_utils import tfph, adam_opt
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -51,13 +51,11 @@ class PPO(VPG):
         clipped_surrogate = self.build_clipped_surrogate(
             surrogate, max_surrogate)
         pi_loss = -tf.reduce_mean(clipped_surrogate)
-        pi_train_op = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(pi_loss)
         """ We additionally need to calculate and estimate of the kl
         divergence of the new policy from the old for use as an
         early-stopping criterion during policy training """
         self.kl_divergence = tf.reduce_mean(placeholders['logp'] - logp)
-        return pi_loss, pi_train_op
+        return pi_loss, adam_opt(pi_loss, learning_rate)
 
     @staticmethod
     def build_max_surrogate(clip_ratio, adv):
@@ -78,8 +76,9 @@ class PPO(VPG):
         stop_iter = 0
         for _ in range(self.pi_train_iters):
             stop_iter += 1
-            kl_div, _ = self.sess.run((self.kl_divergence, self.pi_train_op),
-                                      feed_dict=feed_dict)
+            kl_div, _ = self.sess.run(
+                (self.kl_divergence, self.train_ops['LossPi']),
+                feed_dict=feed_dict)
             # if we reach the target kl_div, halt training
             if kl_div > 1.5*self.target_kl:
                 LOGGER.warning(
