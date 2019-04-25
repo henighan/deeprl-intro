@@ -48,8 +48,8 @@ class Learner():
         obs = self.env.reset()
         rew, ep_len, ep_ret, is_term_state = 0, 0, 0, False
         while ((self.train_step_ctr < self.epoch_len)
-                and (not is_term_state)
-                and (ep_len < self.max_ep_len)):
+               and (not is_term_state)
+               and (ep_len < self.max_ep_len)):
             # environment variables to store in buffer
             env_to_buffer = dict(obs=obs, rew=rew, is_term=is_term_state)
             # Take agent step, return values to store in buffer, and in logs
@@ -62,6 +62,7 @@ class Learner():
             obs, rew, is_term_state, _ = self.env.step(agent_to_buffer['act'])
             if not testing:
                 self.train_step_ctr += 1
+        ep_ret += rew
         if (is_term_state) or (ep_len >= self.max_ep_len):
             self.logger.store(**{log_prefix + 'EpRet': ep_ret,
                                  log_prefix + 'EpLen': ep_len})
