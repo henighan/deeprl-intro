@@ -10,6 +10,11 @@ def trainable_count(scope=''):
                 if scope in var.name])
 
 
+def var_list(scope=''):
+    """ return trainable variables with matching scope """
+    return [var for var in tf.trainable_variables() if scope in var.name]
+
+
 def mlp(x, hidden_sizes=(32,), activation=tf.tanh, output_activation=None):
     """ Builds a multi-layer perceptron in Tensorflow.  """
     with tf.variable_scope('mlp'):
