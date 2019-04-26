@@ -11,7 +11,7 @@ class ReplayBuffer:
     agent """
 
     def __init__(self, buffer_size, epoch_size=None, gamma=0.99, lam=0.95,
-                 batch_size=None):
+                 batch_size=100):
         self.gamma, self.lam = gamma, lam
         self.buffer_size, self.path_start_idx = buffer_size, 0
         self.epoch_size = epoch_size or buffer_size
