@@ -32,7 +32,7 @@ class Base:
         self.losses = None # to be filled in by build_graph
         self.train_ops = None # to be filled in by build_graph
 
-    def step(self, obs):
+    def step(self, obs, testing=False):
         """ sample action given observation of environment. returns two
         dictionaries. The first conains values we want stored in the buffer.
         The second is values we want sent to the log """
