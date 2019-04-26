@@ -126,3 +126,34 @@ class TestDDPG(tf.test.TestCase):
         act_space.low = -1*act_space.high
         ret = self.agent.add_noise_and_clip(act, act_noise, act_space)
         np.testing.assert_allclose(ret, np.array([1.0, -1.0]))
+
+    def test_build_policy_loss(self):
+        """ test that the loss function makes sense, that the qval goes
+        up when training, and that no qval variables are trained """
+        dim = 3
+        qval_np = np.random.randn(dim)
+        pi_np = np.random.randn(dim)
+        input_np = qval_np + pi_np
+        with tf.variable_scope(MAIN + '/qval'):
+            qval_var = tf.get_variable('main', initializer=qval_np)
+        with tf.variable_scope(MAIN + '/pi'):
+            pi_var = tf.get_variable('target', initializer=pi_np)
+        input_var = qval_var + pi_var
+        estimators = {'main_qval_pi': input_var}
+        expected_init_loss = -np.mean(input_np)
+        loss, train_op = self.agent.build_policy_loss(estimators)
+        with self.cached_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            init_loss, init_pi_var, init_qval_var, init_input = sess.run(
+                (loss, pi_var, qval_var, input_var))
+            # make sure the loss matches the same calc in numpy
+            np.testing.assert_allclose(expected_init_loss, init_loss)
+            sess.run(train_op)
+            final_loss, final_pi_var, final_qval_var, final_input = sess.run(
+                (loss, pi_var, qval_var, input_var))
+            assert final_loss < init_loss # make sure the loss went down
+            # make sure the qval variables were NOT changed
+            np.testing.assert_allclose(init_qval_var, final_qval_var)
+            # make sure the input_var went up
+            # (corresponding to q(s, pi) going up)
+            assert all(final_input > init_input)

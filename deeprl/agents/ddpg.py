@@ -148,8 +148,8 @@ class DDPG(Base):
 
     def build_policy_loss(self, estimators):
         """ build loss function and train op for deterministic policy """
-        loss = -estimators['main_qval_pi']
+        loss = -1*tf.reduce_mean(estimators['main_qval_pi'])
         train_op = tf.train.AdamOptimizer(
             learning_rate=self.pi_lr).minimize(
-                loss, var_list=tf_utils.var_list('target/pi'))
+                loss, var_list=tf_utils.var_list(MAIN + '/pi'))
         return loss, train_op
