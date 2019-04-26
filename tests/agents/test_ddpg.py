@@ -1,5 +1,6 @@
 """ Tests for ddpg agent """
 from unittest import mock
+import pytest
 import numpy as np
 import tensorflow as tf
 import gym
@@ -157,3 +158,42 @@ class TestDDPG(tf.test.TestCase):
             # make sure the input_var went up
             # (corresponding to q(s, pi) going up)
             assert all(final_input > init_input)
+
+    def test_build_qval_loss(self):
+        """ test that the loss function makes sense, that the
+        qval gets closer to the targets when training, and that
+        no policy (pi) or target variables are changed """
+        is_term_np = np.random.randint(0, 2, self.batch_size)
+        target_qval_np = np.random.randn(self.batch_size)
+        with tf.variable_scope(TARGET + '/qval'):
+            target_qval_var = tf.get_variable(
+                'target', initializer=target_qval_np)
+        rew_np = np.random.randn(self.batch_size)
+        target_np = rew_np + self.agent.gamma*(1 - is_term_np)*target_qval_np
+        qval_np = np.random.randn(self.batch_size)
+        pi_np = np.random.randn(self.batch_size)
+        input_np = qval_np + pi_np
+        loss_np = np.mean((input_np - target_np)**2)
+        with tf.variable_scope(MAIN + '/qval'):
+            qval_var = tf.get_variable('qval', initializer=qval_np)
+        with tf.variable_scope(MAIN + '/pi'):
+            pi_var = tf.get_variable('pi', initializer=pi_np)
+        input_var = qval_var + pi_var
+        estimators = {'target_qval_pi_next': target_qval_var,
+                      'main_qval': input_var}
+        placeholders = {'rew': rew_np, 'is_term': is_term_np}
+        loss, train_op = self.agent.build_qval_loss(estimators, placeholders)
+        with self.cached_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            init_loss, init_target, init_qval, init_pi = sess.run(
+                (loss, target_qval_var, qval_var, pi_var))
+            assert init_loss == pytest.approx(loss_np)
+            sess.run(train_op)
+            final_loss, final_target, final_qval, final_pi = sess.run(
+                (loss, target_qval_var, qval_var, pi_var))
+            # make sure the loss went down
+            assert final_loss < init_loss
+            # make sure target variables were not updated
+            np.testing.assert_allclose(init_target, final_target)
+            # make sure policy variables were not updated
+            np.testing.assert_allclose(init_pi, final_pi)
