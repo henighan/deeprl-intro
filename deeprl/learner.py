@@ -53,7 +53,8 @@ class Learner():
             # environment variables to store in buffer
             env_to_buffer = dict(obs=obs, rew=rew, is_term=is_term_state)
             # Take agent step, return values to store in buffer, and in logs
-            agent_to_buffer, agent_to_log = self.agent.step(obs)
+            agent_to_buffer, agent_to_log = self.agent.step(
+                obs, testing=testing)
             if not testing:
                 self.buffer.store({**env_to_buffer, **agent_to_buffer})
                 self.logger.store(**agent_to_log)
