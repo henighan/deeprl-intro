@@ -17,14 +17,15 @@ class DDPG(Base):
     early on. After this, its normal DDPG """
 
     train_ph_keys = ['obs', 'next_obs', 'act', 'is_term', 'rew']
-    log_each_step = {}
-    log_tabular_kwargs = {}
-    to_buffer_each_step_dict = {'act': 'main_pi'}
+    to_buffer_each_step_dict = {'act': 'main_pi', 'qval': 'main_qval_pi'}
+    log_each_step = {'qval': 'QVals'}
+    log_tabular_kwargs = {'QVals': {'average_only': True}}
     polyak = 0.95
 
     def __init__(self, hidden_sizes=(64, 64), activation=tf.tanh,
                  sess=None, close_sess=True, pi_lr=1e-3, q_lr=1e-3,
-                 act_noise=0.1, gamma=0.99):
+                 act_noise=0.1, gamma=0.99, n_batches=5000,
+                 start_steps=10000):
         super().__init__(hidden_sizes=hidden_sizes, activation=activation,
                          sess=None, close_sess=True)
         self.pi_lr, self.q_lr = pi_lr, q_lr
@@ -32,14 +33,20 @@ class DDPG(Base):
         self.act_space = None
         self.target_update_op = None
         self.gamma = gamma
+        self.n_batches = n_batches
+        self.step_ctr = 0
 
     def step(self, obs, testing=False):
         """ sample action given observation """
         to_buffer, to_log = super().step(obs, testing=testing)
         # when not in testing mode, add noise to sampled action
         if not testing:
-            to_buffer['act'] = self.add_noise_and_clip(
-                to_buffer['act'], self.act_noise, self.act_space)
+            self.step_ctr += 1
+            if self.step_ctr < self.start_steps:
+                to_buffer['act'] = self.action_space.sample()
+            else:
+                to_buffer['act'] = self.add_noise_and_clip(
+                    to_buffer['act'], self.act_noise, self.act_space)
         return to_buffer, to_log
 
     @staticmethod
@@ -163,3 +170,24 @@ class DDPG(Base):
             learning_rate=self.pi_lr).minimize(
                 loss, var_list=tf_utils.var_list(MAIN + '/pi'))
         return loss, train_op
+
+    def train(self, replay_buffer):
+        """ train after epoch. returns a dict of things we want to
+        have logged including the policy and Qval losses """
+        # train action-value function
+        q_to_logs = self.update_params('LossQ', replay_buffer)
+        # train policy
+        pi_to_logs = self.update_params('LossPi', replay_buffer)
+        # polyak update target parameters
+        self.sess.run(self.target_update_op)
+        return {**q_to_logs, **pi_to_logs}
+
+    def update_params(self, loss_key, replay_buffer):
+        """ trains a loss parameters after an epoch """
+        for batch in replay_buffer.batches(self.n_batches):
+            feed_dict = {self.placeholders[key]: batch[key]
+                         for key in self.train_ph_keys}
+            losses, _ = self.sess.run(
+                (self.losses[loss_key], self.train_ops[loss_key]))
+            loss_sum += np.sum(losses)
+        return {loss_key: loss_sum/self.n_batches}
