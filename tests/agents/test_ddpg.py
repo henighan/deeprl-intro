@@ -1,4 +1,5 @@
 """ Tests for ddpg agent """
+from unittest import mock
 import numpy as np
 import tensorflow as tf
 import gym
@@ -15,10 +16,12 @@ class TestDDPG(tf.test.TestCase):
         self.env = gym.make('MountainCarContinuous-v0')
         self.agent = DDPG(hidden_sizes=(4,))
         self.obs_dim = 3
-        self.act_dim = 2
+        self.act_dim = 1
         self.batch_size = 6
         self.obs_ph = tf_utils.tfph(self.obs_dim)
         self.act_ph = tf_utils.tfph(self.act_dim)
+        self.placeholders = {'obs': self.obs_ph, 'act': self.act_ph,
+                             'next_obs': self.obs_ph}
         self.obs = np.random.randn(self.batch_size, self.obs_dim)
         self.act = np.random.randn(self.batch_size, self.act_dim)
 
@@ -81,9 +84,45 @@ class TestDDPG(tf.test.TestCase):
         with tf.variable_scope(MAIN):
             updated_var = tf.get_variable('updated', dtype=tf.float64,
                                           initializer=np.array([1., 1.]))
-        target_update_op = self.agent.target_update_op()
+        target_update_op = self.agent.build_target_update_op()
         with self.cached_session() as sess:
             sess.run(tf.global_variables_initializer())
             sess.run(target_update_op)
             updated_targ = sess.run(target_var)
             np.testing.assert_allclose(updated_targ, np.array([0.05, 0.05]))
+
+    def test_build_policy_and_qval(self):
+        """ smoke test, make sure the number of parameters is right """
+        pi, qval, qval_pi = self.agent.build_policy_and_qval(
+            self.obs_ph, self.act_ph, self.env.action_space)
+        with self.cached_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            pi_vars = tf_utils.var_list('pi')
+            assert len(pi_vars) == 4 # 2 kernels and 2 biases
+            qval_vars = tf_utils.var_list('qval')
+            assert len(qval_vars) == 4 # 2 kernels and 2 biases
+
+    def test_build_estimators(self):
+        """ smoke test, make sure the number of parameters is right """
+        estimators = self.agent.build_estimators(
+            self.placeholders, None, self.env.action_space)
+        with self.cached_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            pi_vars = tf_utils.var_list(MAIN + '/pi')
+            assert len(pi_vars) == 4 # 2 kernels and 2 biases
+            qval_vars = tf_utils.var_list(MAIN + '/qval')
+            assert len(qval_vars) == 4 # 2 kernels and 2 biases
+            pi_vars = tf_utils.var_list(TARGET + '/pi')
+            assert len(pi_vars) == 4 # 2 kernels and 2 biases
+            qval_vars = tf_utils.var_list(TARGET + '/qval')
+            assert len(qval_vars) == 4 # 2 kernels and 2 biases
+
+    def test_add_noise_and_clip_clipping(self):
+        """ test the clipping functionality of add_noise_and_clip """
+        act = np.array([3., -3.])
+        act_noise = 0
+        act_space = mock.Mock()
+        act_space.high = np.ones_like(act)
+        act_space.low = -1*act_space.high
+        ret = self.agent.add_noise_and_clip(act, act_noise, act_space)
+        np.testing.assert_allclose(ret, np.array([1.0, -1.0]))
