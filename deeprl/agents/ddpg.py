@@ -133,6 +133,16 @@ class DDPG(Base):
                        tf_utils.var_list(MAIN))]
         return tf.group(op_list)
 
+    def build_losses(self, estimators, placeholders):
+        """ build losses and train ops for action-value
+        function and policy estimators """
+        qval_loss, qval_train_op = self.build_qval_loss(
+            estimators, placeholders)
+        pi_loss, pi_train_op = self.build_policy_loss(estimators)
+        losses = {'LossQ': qval_loss, 'LossPi': pi_loss}
+        train_ops = {'LossQ': qval_train_op, 'LossPi': pi_train_op}
+        return losses, train_ops
+
     def build_qval_loss(self, estimators, placeholders):
         """ build loss for action-value function """
         is_term_mask = 1 - placeholders['is_term']
