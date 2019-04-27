@@ -20,11 +20,13 @@ class DDPG(Base):
     to_buffer_each_step_dict = {'act': 'main_pi', 'qval': 'main_qval_pi'}
     log_each_step = {'qval': 'QVals'}
     log_tabular_kwargs = {'QVals': {'average_only': True}}
-    polyak = 0.95
+    polyak = 0.995
+    eval_after_epoch = True
 
-    def __init__(self, hidden_sizes=(64, 64), activation=tf.tanh,
+    def __init__(self, hidden_sizes=(64, 64), activation=tf.nn.relu,
+                 output_activation=tf.tanh,
                  sess=None, close_sess=True, pi_lr=1e-3, q_lr=1e-3,
-                 act_noise=0.1, gamma=0.99, n_batches=5000,
+                 act_noise=0.1, gamma=0.99, n_batches=1000,
                  start_steps=10000):
         super().__init__(hidden_sizes=hidden_sizes, activation=activation,
                          sess=None, close_sess=True)
@@ -34,19 +36,35 @@ class DDPG(Base):
         self.target_update_op = None
         self.gamma = gamma
         self.n_batches = n_batches
-        self.step_ctr = 0
+        self.step_ctr, self.start_steps = 0, start_steps
+        self.output_activation = output_activation
+        # TODO fix this hack!!!
+        self.activation = tf.nn.relu
+        print(self.activation)
+        print(self.output_activation)
+
+    def create_placeholders(self, obs_space, act_space):
+        """ create placeholders """
+        super().create_placeholders(obs_space, act_space)
+        self.placeholders['next_obs'] = tf_utils.tfph(
+            obs_space.shape[-1], name='next_obs')
+        self.placeholders['is_term'] = tf_utils.tfph(None, name='is_term')
+        self.placeholders['rew'] = tf_utils.tfph(None, name='rew')
 
     def step(self, obs, testing=False):
         """ sample action given observation """
         to_buffer, to_log = super().step(obs, testing=testing)
         # when not in testing mode, add noise to sampled action
+        noise = 0. if testing else self.act_noise
         if not testing:
             self.step_ctr += 1
-            if self.step_ctr < self.start_steps:
-                to_buffer['act'] = self.action_space.sample()
-            else:
-                to_buffer['act'] = self.add_noise_and_clip(
-                    to_buffer['act'], self.act_noise, self.act_space)
+        if (self.step_ctr < self.start_steps) and (not testing):
+            # During the first steps, take random actions
+            to_buffer['act'] = self.act_space.sample()
+        else:
+            # add noise if testing and clip to ensure action is valid
+            to_buffer['act'] = self.add_noise_and_clip(
+                to_buffer['act'], noise, self.act_space)
         return to_buffer, to_log
 
     @staticmethod
@@ -57,11 +75,13 @@ class DDPG(Base):
         return np.clip(act + noise, act_space.low, act_space.high)
 
     @staticmethod
-    def build_policy(act_space, obs_ph, hidden_sizes, activation):
+    def build_policy(act_space, obs_ph, hidden_sizes, activation,
+                     output_activation=None):
         """ build the deterministic policy """
         if isinstance(act_space, Box):
-            pi = mlp_deterministic_policy(obs_ph, hidden_sizes,
-                                          activation, act_space)
+            pi = act_space.high[0]*mlp_deterministic_policy(
+                obs_ph, hidden_sizes, activation, act_space,
+                output_activation=output_activation)
             return pi
         raise NotImplementedError(
             "DDPG can only be used with continuous action spaces")
@@ -73,6 +93,14 @@ class DDPG(Base):
         qval = tf_utils.mlp(features, hidden_sizes=hidden_sizes + (1,),
                             activation=activation)
         return tf.reshape(qval, [-1])
+
+    def tf_saver_kwargs(self, placeholders, estimators):
+        """ the kwargs for the logger tf_saver method """
+        outputs = {'pi': estimators['main_pi'],
+                   'q': estimators['main_qval']}
+        return {'sess': self.sess,
+                'inputs': {'x': self.placeholders['obs']},
+                'outputs': outputs}
 
     def build_graph(self, obs_space, act_space):
         """ build the tensorflow graph """
@@ -108,7 +136,8 @@ class DDPG(Base):
         with tf.variable_scope('pi'):
             # policy
             pi = self.build_policy(act_space, obs,
-                                   self.hidden_sizes, self.activation)
+                                   self.hidden_sizes, self.activation,
+                                   output_activation=self.output_activation)
         with tf.variable_scope('qval'):
             # qval of action taken during episode
             qval = self.build_action_value_function(
@@ -154,8 +183,8 @@ class DDPG(Base):
         """ build loss for action-value function """
         is_term_mask = 1 - placeholders['is_term']
         next_qval_pi = estimators['target_qval_pi_next']
-        target = placeholders['rew'] \
-            + self.gamma*is_term_mask*next_qval_pi
+        target = tf.stop_gradient(placeholders['rew'] \
+            + self.gamma*is_term_mask*next_qval_pi)
         loss = tf.losses.mean_squared_error(
             estimators['main_qval'], target)
         train_op = tf.train.AdamOptimizer(
@@ -174,20 +203,31 @@ class DDPG(Base):
     def train(self, replay_buffer):
         """ train after epoch. returns a dict of things we want to
         have logged including the policy and Qval losses """
-        # train action-value function
-        q_to_logs = self.update_params('LossQ', replay_buffer)
-        # train policy
-        pi_to_logs = self.update_params('LossPi', replay_buffer)
-        # polyak update target parameters
-        self.sess.run(self.target_update_op)
-        return {**q_to_logs, **pi_to_logs}
-
-    def update_params(self, loss_key, replay_buffer):
-        """ trains a loss parameters after an epoch """
+        qval_loss_sum, pi_loss_sum = 0, 0
         for batch in replay_buffer.batches(self.n_batches):
             feed_dict = {self.placeholders[key]: batch[key]
                          for key in self.train_ph_keys}
-            losses, _ = self.sess.run(
-                (self.losses[loss_key], self.train_ops[loss_key]))
-            loss_sum += np.sum(losses)
-        return {loss_key: loss_sum/self.n_batches}
+            # update qval params
+            qval_losses, _ = self.sess.run(
+                (self.losses['LossQ'], self.train_ops['LossQ']),
+                feed_dict=feed_dict)
+            qval_loss_sum += np.sum(qval_losses)
+            pi_losses, _ = self.sess.run(
+                (self.losses['LossPi'], self.train_ops['LossPi']),
+                feed_dict=feed_dict)
+            pi_loss_sum += np.sum(pi_losses)
+            # TODO
+            # print('main: {}'.format(self.sess.run(
+            #     tf_utils.var_list(MAIN)[-1])))
+            # print('target: {}'.format(self.sess.run(
+            #     tf_utils.var_list(TARGET)[-1])))
+        print('n stored: {}'.format(replay_buffer.n_stored))
+        n = self.n_batches*replay_buffer.batch_size
+        self.sess.run(self.target_update_op)
+        # TODO
+        # print('main: {}'.format(self.sess.run(
+        #     tf_utils.var_list(MAIN)[-1])))
+        # print('target: {}'.format(self.sess.run(
+        #     tf_utils.var_list(TARGET)[-1])))
+        return {'LossQ': qval_loss_sum/n,
+                'LossPi': pi_loss_sum/n}
