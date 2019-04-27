@@ -49,13 +49,14 @@ def test_play_episode_episode_ends(mocker, learner, agent_step_ret):
     learner.env.step = mocker.Mock(side_effect=[([0], 0, False, None),
                                                 ([0], 0, False, None),
                                                 ([0], 0, False, None),
-                                                ([0], 0, True, None)])
+                                                ([0], 2., True, None)])
     learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
-    print(learner.logger.store.call_args_list)
     assert ret_ep_len == 4
+    # note the return should include the reward from the last step!!!
+    assert ret_ep_ret == 2.
     learner.logger.store.assert_any_call(Logp=0, VVals=0)
-    learner.logger.store.assert_called_with(EpRet=0, EpLen=4)
+    learner.logger.store.assert_called_with(EpRet=2., EpLen=4)
     assert len(learner.logger.store.call_args_list) == 5
 
 

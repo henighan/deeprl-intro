@@ -53,6 +53,7 @@ class Learner():
             ep_len += 1
             ep_ret += rew
             obs, rew, is_term_state, _ = self.env.step(agent_to_buffer['act'])
+        ep_ret += rew
         if (is_term_state) or (ep_len >= self.max_ep_len):
             self.logger.store(EpRet=ep_ret, EpLen=ep_len)
         else:
