@@ -4,7 +4,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeprl.replay_buffer import ReplayBuffer
+from deeprl.buffers import OnPolicyBuffer
 from deeprl.utils import tf_utils
 from spinup.utils.logx import EpochLogger
 
@@ -27,7 +27,7 @@ class Learner():
             print('{}: {}'.format(key, len(str(val))))
         # self.logger.save_config(locals())
         self.env, self.agent = env, agent
-        self.buffer = ReplayBuffer(steps_per_epoch, gamma=gamma, lam=lam)
+        self.buffer = OnPolicyBuffer(steps_per_epoch, gamma=gamma, lam=lam)
         saver_kwargs = agent.build_graph(env.observation_space,
                                          env.action_space)
         self.logger.setup_tf_saver(**saver_kwargs)

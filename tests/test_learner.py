@@ -19,7 +19,7 @@ def test_play_episode_buffer_full(mocker, learner, agent_step_ret):
     """ test play_episode when the buffer fills up """
     learner.logger = mocker.Mock()
     # mock buffer to be full after two steps
-    full_mock = mocker.patch('deeprl.replay_buffer.ReplayBuffer.full',
+    full_mock = mocker.patch('deeprl.buffers.OnPolicyBuffer.full',
                              new_callable=mocker.PropertyMock)
     full_mock.side_effect = [False, False, False, False, True]
     learner.agent.step.return_value = agent_step_ret
