@@ -1,7 +1,7 @@
 """ Experiment Runners """
 import os
 import gym
-from deeprl.learner import Learner
+from deeprl.learners import PolicyGradientLearner
 from spinup.utils.run_utils import ExperimentGrid
 import spinup
 import tensorflow as tf
@@ -78,8 +78,8 @@ def run_tom(output_dir, seed,
     agent_object = agent_class(hidden_sizes=hidden_sizes,
                                activation=activation)
     env = gym.make(env_name)
-    learner = Learner(agent_object, env, output_dir=output_dir,
-                      steps_per_epoch=steps_per_epoch, epochs=epochs,
-                      seed=seed)
+    learner = PolicyGradientLearner(
+        agent_object, env, output_dir=output_dir,
+        steps_per_epoch=steps_per_epoch, epochs=epochs, seed=seed)
     learner.learn()
     del agent_object
