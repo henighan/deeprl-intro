@@ -4,7 +4,7 @@ from deeprl.utils.math import (advantage_function, discount_cumsum,
                                combined_shape, rewards_to_go)
 
 
-class ReplayBuffer:
+class OnPolicyBuffer:
     """ Stores an Epoch's worth of experience (rewards, observations,
     actions, etc), calculates the advantage and rewards-to-go at the end of
     trajectories. These stored values can then be used for training by the
