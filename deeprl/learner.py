@@ -17,7 +17,7 @@ class Learner():
     def __init__(self, agent, env, steps_per_epoch=4000, epochs=50, seed=0,
                  output_dir=None, output_fname='progress.txt',
                  exp_name=None, max_ep_len=1000, gamma=0.99, lam=0.97,
-                 n_test_episodes=10):
+                 n_test_episodes=10, buffer_size=int(1e6)):
         self.epoch_len, self.n_epochs = steps_per_epoch, epochs
         self.max_ep_len, self.n_test_episodes = max_ep_len, n_test_episodes
         self.logger = EpochLogger(output_dir=output_dir,
@@ -29,7 +29,8 @@ class Learner():
             print('{}: {}'.format(key, len(str(val))))
         # self.logger.save_config(locals())
         self.env, self.agent = env, agent
-        self.buffer = ReplayBuffer(steps_per_epoch, gamma=gamma, lam=lam)
+        self.buffer = ReplayBuffer(
+            buffer_size, epoch_size=steps_per_epoch, gamma=gamma, lam=lam)
         saver_kwargs = agent.build_graph(env.observation_space,
                                          env.action_space)
         self.logger.setup_tf_saver(**saver_kwargs)
@@ -64,12 +65,27 @@ class Learner():
             if not testing:
                 self.train_step_ctr += 1
         ep_ret += rew
+        # TODO
+        # if testing:
+        #     print('testing episode end')
+        #     print('is term: {}'.format(is_term_state))
+        #     print('ep len : {}'.format(ep_len))
+        #     print('max ep len: {}'.format(self.max_ep_len))
+        #     print('ep ret: {}'.format(ep_ret))
+        #     print('act: {}'.format(agent_to_buffer['act']))
         if (is_term_state) or (ep_len >= self.max_ep_len):
+            # TODO
+            # if testing:
+            #     print('testing episode logging')
             self.logger.store(**{log_prefix + 'EpRet': ep_ret,
                                  log_prefix + 'EpLen': ep_len})
         else:
             # if trajectory didn't reach terminal state, bootstrap to target
-            rew = self.agent.step(obs)[0]['val']
+            to_buf = self.agent.step(obs)[0]
+            if 'val' in to_buf:
+                rew = to_buf['val']
+            if 'qval' in to_buf:
+                rew = to_buf['qval']
         if not testing:
             # calculate advantage
             self.buffer.finish_path(last_val=rew, last_obs=obs)
@@ -89,6 +105,7 @@ class Learner():
 
     def test_epoch(self):
         """ evaluate agents performance """
+        self.train_step_ctr = 0
         for _ in range(self.n_test_episodes):
             self.play_episode(testing=True)
 
@@ -108,11 +125,15 @@ class Learner():
         self.logger.log_tabular('Epoch', epoch)
         self.logger.log_tabular('EpRet', with_min_and_max=True)
         self.logger.log_tabular('EpLen', average_only=True)
+        if self.agent.eval_after_epoch:
+            self.logger.log_tabular('TestEpRet', with_min_and_max=True)
+            self.logger.log_tabular('TestEpLen', average_only=True)
         self.logger.log_tabular('TotalEnvInteracts', (epoch+1)*self.epoch_len)
         self.logger.log_tabular('Time', time.time()-start_time)
         for loss_name in self.agent.losses.keys():
             self.logger.log_tabular(loss_name, average_only=True)
-            self.logger.log_tabular('Delta' + loss_name, average_only=True)
+            # TODO
+            # self.logger.log_tabular('Delta' + loss_name, average_only=True)
         for column_name, kwargs in self.agent.log_tabular_kwargs.items():
             self.logger.log_tabular(column_name, **kwargs)
         self.logger.dump_tabular()
