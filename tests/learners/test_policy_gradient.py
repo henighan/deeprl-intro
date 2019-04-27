@@ -1,4 +1,4 @@
-""" Tests for Learner """
+""" Tests for PolicyGradientLearner """
 import os
 import random
 import time
@@ -6,7 +6,7 @@ import time
 import pytest
 import numpy as np
 
-from deeprl.learner import Learner
+from deeprl.learners import PolicyGradientLearner
 
 
 @pytest.fixture
@@ -65,10 +65,11 @@ def test_learner_smoke(mocker, continuous_env, agent_step_ret):
     output_dir, exp_name = 'tests/tmp_test_outputs', 'learner_test'
     agent = mocker.Mock()
     agent.build_graph.return_value = {'saver': 'config'}
-    mocker.patch('deeprl.learner.EpochLogger.setup_tf_saver')
-    learner = Learner(agent, continuous_env, steps_per_epoch=1000,
-                      epochs=4, output_dir='tests/tmp_test_outputs',
-                      exp_name='learner_test')
+    mocker.patch(
+        'deeprl.learners.policy_gradient_learner.EpochLogger.setup_tf_saver')
+    learner = PolicyGradientLearner(
+        agent, continuous_env, steps_per_epoch=1000, epochs=4,
+        output_dir='tests/tmp_test_outputs', exp_name='learner_test')
     learner.logger.save_config = mocker.Mock()
     learner.logger.setup_tf_saver = mocker.Mock()
     learner.logger.save_state = mocker.Mock()

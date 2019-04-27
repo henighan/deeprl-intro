@@ -1,7 +1,7 @@
 """ Pytest conftest """
 import pytest
 import gym
-from deeprl.learner import Learner
+from deeprl.learners import PolicyGradientLearner
 
 @pytest.fixture
 def discrete_env():
@@ -13,9 +13,10 @@ def continuous_env():
 
 @pytest.fixture
 def learner(mocker, continuous_env):
-    mocker.patch('deeprl.learner.EpochLogger.save_config')
-    mocker.patch('deeprl.learner.EpochLogger.log')
-    mocker.patch('deeprl.learner.EpochLogger.setup_tf_saver')
+    learner_path = 'deeprl.learners.policy_gradient_learner.'
+    mocker.patch(learner_path + 'EpochLogger.save_config')
+    mocker.patch(learner_path + 'EpochLogger.log')
+    mocker.patch(learner_path + 'EpochLogger.setup_tf_saver')
     agent = mocker.Mock()
     agent.build_graph.return_value = {'foo': 'bar'}
-    return Learner(agent, env=continuous_env)
+    return PolicyGradientLearner(agent, env=continuous_env)
