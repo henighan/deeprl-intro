@@ -64,11 +64,12 @@ class ReplayBuffer:
 
     def update_path_advantage(self, path_slice, last_val):
         """ calculate the advantage over the path and store in buffer """
-        trajectory_rews = self.buf['rew'][path_slice]
-        trajectory_vals = self.buf['val'][path_slice]
-        self.buf['adv'][path_slice] = advantage_function(
-            trajectory_rews, trajectory_vals, gamma=self.gamma,
-            lam=self.lam, last_val=last_val)
+        if 'val' in self.buf:
+            trajectory_rews = self.buf['rew'][path_slice]
+            trajectory_vals = self.buf['val'][path_slice]
+            self.buf['adv'][path_slice] = advantage_function(
+                trajectory_rews, trajectory_vals, gamma=self.gamma,
+                lam=self.lam, last_val=last_val)
 
     def update_path_rewards_to_go(self, path_slice, last_val):
         """ computes rewards-to-go, to be targets for the value function """
