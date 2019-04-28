@@ -1,7 +1,6 @@
 """ Pytest conftest """
 import pytest
 import gym
-from deeprl.learners import PolicyGradientLearner
 
 @pytest.fixture
 def discrete_env():
