@@ -1,15 +1,16 @@
 """ Experiment Runners """
-import os
-import gym
-from deeprl.learners import PolicyGradientLearner
+import logging
+
 from spinup.utils.run_utils import ExperimentGrid
+import gym
 import spinup
 import tensorflow as tf
-from deeprl.utils import logdir
-from deeprl import agents
+
 from deeprl.common import DEFAULT_KWARGS
-import logging
-logger = logging.getLogger('deeprl')
+from deeprl.helpers import algos
+from deeprl.utils import logdir
+
+LOGGER = logging.getLogger('deeprl')
 
 
 def maybe_run(exp_name, num_runs, implementations, **kwargs):
@@ -17,9 +18,9 @@ def maybe_run(exp_name, num_runs, implementations, **kwargs):
     implementation is not specified, run both tom and spinup implementations
     """
     epochs = kwargs.get('epochs', DEFAULT_KWARGS['epochs'])
-    for ii in range(num_runs):
+    for run_no in range(num_runs):
         for imp in implementations:
-            seed = 10*ii
+            seed = 10*run_no
             maybe_run_single_seed(exp_name, imp, epochs, seed, kwargs)
 
 
@@ -31,22 +32,23 @@ def maybe_run_single_seed(exp_name, implementation, epochs, seed, kwargs):
     output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
     if n_epochs_already_run >= epochs:
-        logger.info(
-            'seed {} for {} already run for {} epochs, skipping'.format(
-                seed, output_dir, n_epochs_already_run))
+        LOGGER.info(
+            'seed %d for %s already run for %d epochs, skipping',
+            seed, output_dir, n_epochs_already_run)
         return
     if n_epochs_already_run > 0:
-        logger.warning(
-            'only {} epochs run for {}, rerunning with {} epochs'.format(
-                n_epochs_already_run, output_dir, epochs))
-    logger.info('running {}'.format(output_dir))
+        LOGGER.warning(
+            'only %d epochs run for %s, rerunning with %d epochs',
+            n_epochs_already_run, output_dir, epochs)
+    LOGGER.info('running %s', output_dir)
     run(exp_name, implementation, seed, **kwargs)
-    
+
 
 def run(exp_name, implementation, seed, **kwargs):
+    """ run an algorithm """
     output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
-    logger.info('saving to {}'.format(output_dir))
+    LOGGER.info('saving to %s', output_dir)
     if implementation == 'spinup':
         run_spinup(exp_name, seed,
                    output_dir=output_dir, **kwargs)
@@ -55,31 +57,20 @@ def run(exp_name, implementation, seed, **kwargs):
 
 
 def run_spinup(exp_name, seed, output_dir=None,
-               env_name='Swimmer-v2', hidden_sizes=(64,64),
+               env_name='Swimmer-v2', hidden_sizes=(64, 64),
                activation=tf.tanh, num_cpu=2, algo='vpg', **kwargs):
+    """ run spinup's implementation """
     logger_kwargs = {'exp_name': exp_name, 'output_dir': output_dir}
     ac_kwargs = {'hidden_sizes': hidden_sizes, 'activation': activation}
     tf.reset_default_graph()
     thunk = getattr(spinup, algo)
-    thunk(get_env_fn(env_name), ac_kwargs=ac_kwargs,
+    env_fn = lambda: gym.make(env_name)
+    thunk(env_fn, ac_kwargs=ac_kwargs,
           logger_kwargs=logger_kwargs, seed=seed, **kwargs)
 
 
-def get_env_fn(env_name):
-    return lambda: gym.make(env_name)
-
-
-def run_tom(output_dir, seed,
-            env_name='Swimmer-v2', hidden_sizes=(64,64),
-            activation=tf.tanh, steps_per_epoch=4000,
-            epochs=50, num_cpu=2, algo='vpg'):
+def run_tom(output_dir, seed, algo='vpg', **kwargs):
+    """ run tom's implementation """
     tf.reset_default_graph()
-    agent_class = getattr(agents, algo.upper())
-    agent_object = agent_class(hidden_sizes=hidden_sizes,
-                               activation=activation)
-    env = gym.make(env_name)
-    learner = PolicyGradientLearner(
-        agent_object, env, output_dir=output_dir,
-        steps_per_epoch=steps_per_epoch, epochs=epochs, seed=seed)
-    learner.learn()
-    del agent_object
+    thunk = getattr(algos, algo)
+    thunk(output_dir, seed, **kwargs)
