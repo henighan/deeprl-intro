@@ -83,8 +83,8 @@ class DeterministicLearner:
         """ train agent at the end of episode """
         batches = self.buffer.batches(n_batches=ep_len)
         for train_iter, batch in enumerate(batches):
-            self.agent.train(train_iter, batch)
-        self.agent.update_targets()
+            to_logger = self.agent.train(train_iter, batch)
+            self.logger.store(**to_logger)
 
     def run_epoch(self):
         """ run epoch of training + evaluation """
