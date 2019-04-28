@@ -1,7 +1,6 @@
 """ Replay Buffer """
 import numpy as np
-from deeprl.utils.math import (advantage_function,
-                               combined_shape, rewards_to_go)
+from deeprl.utils.math import combined_shape
 
 
 class OffPolicyBuffer:
@@ -10,10 +9,9 @@ class OffPolicyBuffer:
     trajectories. These stored values can then be used for training by the
     agent. """
 
-    def __init__(self, buffer_size=int(1e6), epoch_size=5000, gamma=0.99,
-                 lam=0.95):
-        self.gamma, self.lam = gamma, lam
+    def __init__(self, buffer_size=int(1e6), epoch_size=5000, batch_size=100):
         self.buffer_size, self.path_start_idx = buffer_size, 0
+        self.batch_size = batch_size
         self.epoch_size = epoch_size or buffer_size
         if buffer_size % self.epoch_size != 0:
             raise NotImplementedError("Buffer size which is not integer "
@@ -33,9 +31,8 @@ class OffPolicyBuffer:
         self.update_path_next_obs(self.path_slice, last_obs)
         self.path_start_idx = self.ptr
 
-    def batches(self, n_batches, batch_size=100):
+    def batches(self, n_batches):
         """ generator of randomly-sampled minibatches of experience """
-        self.normalize_advantage()
         for _ in range(n_batches):
             yield self.sample_batch(self.batch_size)
 

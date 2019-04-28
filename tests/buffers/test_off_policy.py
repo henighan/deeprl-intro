@@ -124,7 +124,7 @@ def test_n_stored(buffer_size, replay_buffer):
     assert replay_buffer.n_stored == buffer_size
 
 
-def test_sample_batch(buffer_size, replay_buffer, to_store):
+def test_sample_batch(replay_buffer, to_store):
     """ test sample_batch """
     batch_size = 2
     for _ in range(4):

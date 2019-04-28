@@ -1,4 +1,4 @@
-""" RL Learner, for playing out episodes and training """
+""" RL Policy Gradient Learner, for training VPG and PPO agents """
 import time
 
 import numpy as np
@@ -9,7 +9,7 @@ from deeprl.utils import tf_utils
 from spinup.utils.logx import EpochLogger
 
 
-class Learner():
+class PolicyGradientLearner():
     """ Deep RL Learner, plays out episodes and epochs between the environment
     and the agent. At the end of an epoch, it invokes agent training. Also
     handles all logging """
