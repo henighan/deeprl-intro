@@ -44,6 +44,7 @@ class DDPG():
 
     def build_graph(self, obs_space, act_space):
         """ Build the tensorflow graph """
+        self.act_space = act_space
         self.create_placeholders(obs_space, act_space)
         # build estimators of policy and Q
         est_ret = self.build_estimators(self.placeholders, act_space)
