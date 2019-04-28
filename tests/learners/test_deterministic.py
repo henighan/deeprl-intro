@@ -1,8 +1,5 @@
 """ Tests for DeterministicLearner """
-import os
-import random
-import time
-
+# pylint: disable=redefined-outer-name
 import pytest
 import numpy as np
 
@@ -34,7 +31,7 @@ def learner(mocker, continuous_env, agent_step_ret):
     return DeterministicLearner(agent, env=continuous_env)
 
 
-def test_episode_step_testing_false(mocker, learner, agent_step_ret):
+def test_episode_step_testing_false(mocker, learner):
     """ smoke test episode step """
     mocker.patch.object(learner, 'logger')
     obs = learner.env.reset()
@@ -46,7 +43,7 @@ def test_episode_step_testing_false(mocker, learner, agent_step_ret):
     assert learner.buffer.buf # ensure buffer was initialized
 
 
-def test_episode_step_testing_True(mocker, learner, agent_step_ret):
+def test_episode_step_testing_true(mocker, learner):
     """ smoke test episode step """
     mocker.patch.object(learner, 'logger')
     mocker.patch.object(learner, 'buffer')
@@ -91,7 +88,7 @@ def test_play_episode_episode_ends(mocker, learner, env_step_ret):
                      env_step_ret,
                      env_step_ret,
                      (np.array([0]), 2., True, None)]) # last one is terminal!
-    ret_ep_len, ret_ep_ret, epoch_ctr = learner.play_episode()
+    ret_ep_len, ret_ep_ret, _ = learner.play_episode()
     assert ret_ep_len == 4
     # note the return should include the reward from the last step!!!
     assert ret_ep_ret == 2.
