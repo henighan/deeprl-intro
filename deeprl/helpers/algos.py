@@ -29,3 +29,13 @@ def ppo(output_dir, seed, env_name='Swimmer-v2', hidden_sizes=(64, 64),
         steps_per_epoch=steps_per_epoch, epochs=epochs, seed=seed)
     learner.learn()
     del agent
+
+
+def ddpg(output_dir, seed, env_name='Swimmer-v2', hidden_sizes=(400, 300),
+         steps_per_epoch=5000, epochs=50):
+    agent = agents.DDPG(hidden_sizes=hidden_sizes)
+    env = gym.make(env_name)
+    learner = learners.DeterministicLearner(
+        agent, env, steps_per_epoch=steps_per_epoch, epochs=epochs)
+    learner.learn()
+    del agent
