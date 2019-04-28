@@ -10,7 +10,7 @@ from deeprl.common import DEFAULT_KWARGS
 from deeprl.helpers import algos
 from deeprl.utils import logdir
 
-logger = logging.getLogger('deeprl')
+LOGGER = logging.getLogger('deeprl')
 
 
 def maybe_run(exp_name, num_runs, implementations, **kwargs):
@@ -32,15 +32,15 @@ def maybe_run_single_seed(exp_name, implementation, epochs, seed, kwargs):
     output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
     if n_epochs_already_run >= epochs:
-        logger.info(
-            'seed {} for {} already run for {} epochs, skipping'.format(
-                seed, output_dir, n_epochs_already_run))
+        LOGGER.info(
+            'seed %d for %s already run for %d epochs, skipping',
+            seed, output_dir, n_epochs_already_run)
         return
     if n_epochs_already_run > 0:
-        logger.warning(
-            'only {} epochs run for {}, rerunning with {} epochs'.format(
-                n_epochs_already_run, output_dir, epochs))
-    logger.info('running {}'.format(output_dir))
+        LOGGER.warning(
+            'only %d epochs run for %s, rerunning with %d epochs',
+            n_epochs_already_run, output_dir, epochs)
+    LOGGER.info('running %s', output_dir)
     run(exp_name, implementation, seed, **kwargs)
 
 
@@ -48,7 +48,7 @@ def run(exp_name, implementation, seed, **kwargs):
     """ run an algorithm """
     output_dir = logdir.output_dir_from_kwargs(
         exp_name, implementation, kwargs, seed=seed)
-    logger.info('saving to {}'.format(output_dir))
+    LOGGER.info('saving to %s', output_dir)
     if implementation == 'spinup':
         run_spinup(exp_name, seed,
                    output_dir=output_dir, **kwargs)
