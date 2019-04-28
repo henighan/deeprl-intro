@@ -36,6 +36,7 @@ def ddpg(output_dir, seed, env_name='Swimmer-v2', hidden_sizes=(400, 300),
     agent = agents.DDPG(hidden_sizes=hidden_sizes)
     env = gym.make(env_name)
     learner = learners.DeterministicLearner(
-        agent, env, steps_per_epoch=steps_per_epoch, epochs=epochs)
+        agent, env, steps_per_epoch=steps_per_epoch, epochs=epochs,
+        output_dir=output_dir)
     learner.learn()
     del agent
