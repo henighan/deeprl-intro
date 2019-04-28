@@ -66,6 +66,20 @@ class DDPG():
                            'a': self.placeholders['act']},
                 'outputs': {'pi': self.pi, 'q': self.qval}}
 
+    def train(self, train_iter, batch):
+        """ run one iteration of training """
+        feed_dict = {self.placeholders[name]: batch[name]
+                     for name in self.train_ph_keys}
+        # update qval network
+        qval_loss, qval, _ = self.sess.run(
+            (self.qval_loss, self.qval, self.qval_train_op), feed_dict)
+        # update policy network
+        pi_loss, _ = self.sess.run((self.pi_loss, self.pi_train_op),
+                                   feed_dict=feed_dict)
+        # update target networks
+        self.sess.run(self.target_update_op)
+        return {'LossQ': qval_loss, 'LossPi': pi_loss, 'QVals': qval}
+
     def step(self, obs, testing=False):
         """ sample action given observation of environment. returns two
         dictionaries. The first conains values we want stored in the buffer.
@@ -174,10 +188,6 @@ class DDPG():
                    zip(tf_utils.var_list(TARGET),
                        tf_utils.var_list(MAIN))]
         return tf.group(op_list)
-
-    def update_targets(self):
-        """ runs op to polyak update target parameters """
-        self.sess.run(self.target_update_op)
 
     def build_qval_target(self, qval_pi_targ, placeholders):
         """ build the targets for qval training """
