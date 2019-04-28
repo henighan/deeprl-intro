@@ -37,10 +37,34 @@ class DDPG():
         self.pi_loss, self.pi_train_op = None, None
         self.qval_loss, self.qval_train_op = None, None
         self.pi, self.qval, self.qval_pi = None, None, None
-        self.pi_targ, self.qval_targ, self.qval_pi_targ = None, None, None
+        self.qval_pi_targ = None
         self.act_space = None
         self.target_update_op = None
         self.n_training_steps = 0
+
+    def build_graph(self, obs_space, act_space):
+        """ Build the tensorflow graph """
+        self.create_placeholders(obs_space, act_space)
+        # build estimators of policy and Q
+        est_ret = self.build_estimators(self.placeholders, act_space)
+        self.pi, self.qval, self.qval_pi, self.qval_pi_targ = est_ret
+        # build Q loss and train op
+        qval_targ = self.build_qval_target(
+            self.qval_pi_targ, self.placeholders)
+        self.qval_loss, self.qval_train_op = self.build_qval_loss(
+            self.qval, qval_targ)
+        # build policy loss and train op
+        self.pi_loss, self.pi_train_op = self.build_policy_loss(self.qval_pi)
+        # build polyak target updating op
+        self.target_update_op = self.build_target_update_op()
+        self.sess.run(tf.global_variables_initializer())
+        # set target network parameters equal to main network parameters
+        self.target_var_init()
+        # returns kwargs for tf_saver
+        return {'sess': self.sess,
+                'inputs': {'x': self.placeholders['obs'],
+                           'a': self.placeholders['act']},
+                'outputs': {'pi': self.pi, 'q': self.qval}}
 
     def step(self, obs, testing=False):
         """ sample action given observation of environment. returns two
@@ -124,11 +148,11 @@ class DDPG():
                 placeholders['obs'], placeholders['act'], act_space)
         # use next_obs as input for target policy
         with tf.variable_scope(TARGET):
-            pi_targ, _, qval_pi_targ = \
+            _, _, qval_pi_targ = \
                     self.build_policy_and_qval(
                         placeholders['next_obs'], placeholders['act'],
                         act_space)
-        return pi, qval, qval_pi, pi_targ, qval_pi_targ
+        return pi, qval, qval_pi, qval_pi_targ
 
 
     def target_var_init(self):
