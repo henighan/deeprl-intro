@@ -58,10 +58,14 @@ def run(exp_name, implementation, seed, **kwargs):
 
 def run_spinup(exp_name, seed, output_dir=None,
                env_name='Swimmer-v2', hidden_sizes=(64, 64),
-               activation=tf.tanh, num_cpu=2, algo='vpg', **kwargs):
+               num_cpu=2, algo='vpg', **kwargs):
     """ run spinup's implementation """
     logger_kwargs = {'exp_name': exp_name, 'output_dir': output_dir}
-    ac_kwargs = {'hidden_sizes': hidden_sizes, 'activation': activation}
+    ac_kwargs = {'hidden_sizes': hidden_sizes}
+    if algo == 'ddpg':
+        # spinup's implementation of ddpg does not run the
+        # correct number of epochs
+        kwargs['epochs'] = kwargs.get('epochs', DEFAULT_KWARGS['epochs']) + 1
     tf.reset_default_graph()
     thunk = getattr(spinup, algo)
     env_fn = lambda: gym.make(env_name)
