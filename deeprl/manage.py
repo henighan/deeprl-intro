@@ -69,9 +69,14 @@ def benchmark(ctx):
         click.echo('kwargs: {}'.format(kwargs))
         maybe_run(exp_name, num_runs, imps, **kwargs)
         # ensure we don't have the epochs kwarg twice
+        epochs = kwargs.pop('epochs', DEFAULT_KWARGS['epochs'])
+        # for off policy algorithms, we want to compare Test return
+        val_to_plot = 'AverageTestEpRet'
+        if kwargs.get('algo', DEFAULT_KWARGS['algo']) in ['vpg', 'ppo']:
+            val_to_plot = 'AverageEpRet'
         plotting.deeprlplot(
             exp_name, imps, num_runs=num_runs, benchmark=True,
-            epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
+            epochs=epochs, value=val_to_plot, **kwargs)
     plt.show()
 
 
