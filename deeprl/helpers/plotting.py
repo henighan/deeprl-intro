@@ -68,16 +68,17 @@ def get_dataframe(exp_name, imp, num_runs, value, epochs, kwargs):
             continue
         tmp_df['seed'] = seed
         if epochs:
-            tmp_df = tmp_df[tmp_df['Epoch'] < epochs]
+            min_epoch = tmp_df['Epoch'].min()
+            tmp_df = tmp_df[tmp_df['Epoch'] < min_epoch + epochs]
         data = pd.concat([tmp_df, data])
     return data
 
 
 def calculate_delta_ep_ret(data, epochs):
-    starting_epret = data[data['Epoch']==0][[
+    starting_epret = data[data['Epoch']==data['Epoch'].min()][[
         'AverageEpRet', 'seed']].rename(
         {'AverageEpRet': 'StartingEpRet'}, axis=1)
-    ending_epret = data[data['Epoch']==epochs-1][[
+    ending_epret = data[data['Epoch']==data['Epoch'].max()][[
         'AverageEpRet', 'seed']].rename(
         {'AverageEpRet': 'EndingEpRet'}, axis=1)
     merged = pd.merge(starting_epret, ending_epret, on='seed')
