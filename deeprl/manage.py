@@ -22,12 +22,10 @@ def process_cli_kwargs(all_kwargs):
     environments that were specified. Also processes hidden_arguments and
     activations from strings into tuples and tf activation functions,
     respectively """
-    activations = all_kwargs.pop('activation')
     hidden_sizes = all_kwargs.pop('hidden_sizes')
     env_names = all_kwargs.pop('env_name')
-    for hid, act, env in itertools.product(hidden_sizes, activations, env_names):
+    for hid, env in itertools.product(hidden_sizes, env_names):
         kwargs = {'hidden_sizes': eval(hid),
-                  'activation': getattr(tf.nn, act),
                   'env_name': env,
                   **all_kwargs}
         yield {key: val for key, val in kwargs.items()
@@ -43,14 +41,11 @@ def process_cli_kwargs(all_kwargs):
 @click.option('--epochs', default=50, help='Number of epochs',
               show_default=True)
 @click.option('--steps_per_epoch', '-steps', default=4000,
-              help='Number of epochs', show_default=True)
+              help='Number of steps per epoch', show_default=True)
 @click.option('--env_name', '-env', default=['Swimmer-v2'],
               help='Environment name', show_default=True, multiple=True)
 @click.option('--hidden_sizes', '-hid', default=['(64,64)'],
               help='Hidden sizes for actor and critic MLPs',
-              show_default=True, multiple=True)
-@click.option('--activation', default=['tanh'],
-              help='Activation to use in actor-critic MLPs',
               show_default=True, multiple=True)
 @click.option('--algo', '-a', default='vpg',
               help='Algorithm (ie agent) to use', show_default=True,
@@ -74,9 +69,14 @@ def benchmark(ctx):
         click.echo('kwargs: {}'.format(kwargs))
         maybe_run(exp_name, num_runs, imps, **kwargs)
         # ensure we don't have the epochs kwarg twice
+        epochs = kwargs.pop('epochs', DEFAULT_KWARGS['epochs'])
+        # for off policy algorithms, we want to compare Test return
+        val_to_plot = 'AverageTestEpRet'
+        if kwargs.get('algo', DEFAULT_KWARGS['algo']) in ['vpg', 'ppo']:
+            val_to_plot = 'AverageEpRet'
         plotting.deeprlplot(
             exp_name, imps, num_runs=num_runs, benchmark=True,
-            epochs=kwargs.pop('epochs', DEFAULT_KWARGS['epochs']), **kwargs)
+            epochs=epochs, value=val_to_plot, **kwargs)
     plt.show()
 
 

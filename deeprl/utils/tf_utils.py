@@ -26,3 +26,8 @@ def tfph(size, name=None):
     """ create tensorflow placeholder """
     shape = [None, size] if size else [None]
     return tf.placeholder(dtype=tf.float32, shape=shape, name=name)
+
+
+def var_list(scope=''):
+    """ return trainable variables with matching scope """
+    return [var for var in tf.trainable_variables() if scope in var.name]

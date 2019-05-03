@@ -1,4 +1,4 @@
-""" Tests for Learner """
+""" Tests for PolicyGradientLearner """
 import os
 import random
 import time
@@ -6,7 +6,18 @@ import time
 import pytest
 import numpy as np
 
-from deeprl.learner import Learner
+from deeprl.learners import PolicyGradientLearner
+
+
+@pytest.fixture
+def learner(mocker, continuous_env):
+    learner_path = 'deeprl.learners.policy_gradient_learner.'
+    mocker.patch(learner_path + 'EpochLogger.save_config')
+    mocker.patch(learner_path + 'EpochLogger.log')
+    mocker.patch(learner_path + 'EpochLogger.setup_tf_saver')
+    agent = mocker.Mock()
+    agent.build_graph.return_value = {'foo': 'bar'}
+    return PolicyGradientLearner(agent, env=continuous_env)
 
 
 @pytest.fixture
@@ -19,7 +30,7 @@ def test_play_episode_buffer_full(mocker, learner, agent_step_ret):
     """ test play_episode when the buffer fills up """
     learner.logger = mocker.Mock()
     # mock buffer to be full after two steps
-    full_mock = mocker.patch('deeprl.replay_buffer.ReplayBuffer.full',
+    full_mock = mocker.patch('deeprl.buffers.OnPolicyBuffer.full',
                              new_callable=mocker.PropertyMock)
     full_mock.side_effect = [False, False, False, False, True]
     learner.agent.step.return_value = agent_step_ret
@@ -49,13 +60,14 @@ def test_play_episode_episode_ends(mocker, learner, agent_step_ret):
     learner.env.step = mocker.Mock(side_effect=[([0], 0, False, None),
                                                 ([0], 0, False, None),
                                                 ([0], 0, False, None),
-                                                ([0], 0, True, None)])
+                                                ([0], 2., True, None)])
     learner.agent.step.return_value = agent_step_ret
     ret_ep_len, ret_ep_ret = learner.play_episode()
-    print(learner.logger.store.call_args_list)
     assert ret_ep_len == 4
+    # note the return should include the reward from the last step!!!
+    assert ret_ep_ret == 2.
     learner.logger.store.assert_any_call(Logp=0, VVals=0)
-    learner.logger.store.assert_called_with(EpRet=0, EpLen=4)
+    learner.logger.store.assert_called_with(EpRet=2., EpLen=4)
     assert len(learner.logger.store.call_args_list) == 5
 
 
@@ -64,10 +76,11 @@ def test_learner_smoke(mocker, continuous_env, agent_step_ret):
     output_dir, exp_name = 'tests/tmp_test_outputs', 'learner_test'
     agent = mocker.Mock()
     agent.build_graph.return_value = {'saver': 'config'}
-    mocker.patch('deeprl.learner.EpochLogger.setup_tf_saver')
-    learner = Learner(agent, continuous_env, steps_per_epoch=1000,
-                      epochs=4, output_dir='tests/tmp_test_outputs',
-                      exp_name='learner_test')
+    mocker.patch(
+        'deeprl.learners.policy_gradient_learner.EpochLogger.setup_tf_saver')
+    learner = PolicyGradientLearner(
+        agent, continuous_env, steps_per_epoch=1000, epochs=4,
+        output_dir='tests/tmp_test_outputs', exp_name='learner_test')
     learner.logger.save_config = mocker.Mock()
     learner.logger.setup_tf_saver = mocker.Mock()
     learner.logger.save_state = mocker.Mock()

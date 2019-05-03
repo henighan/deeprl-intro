@@ -1,9 +1,10 @@
-""" Tests for Replay Buffer """
+""" Tests for On-Policy Buffer """
 # pylint: disable=redefined-outer-name
 import numpy as np
 import pytest
 
-from deeprl.replay_buffer import ReplayBuffer
+from deeprl.buffers import OnPolicyBuffer
+
 
 @pytest.fixture
 def size():
@@ -13,7 +14,7 @@ def size():
 @pytest.fixture
 def replay_buffer(size):
     """ replay buffer object """
-    return ReplayBuffer(size)
+    return OnPolicyBuffer(size)
 
 
 def test_initialize_buf_smoke(size, replay_buffer):

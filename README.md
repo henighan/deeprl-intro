@@ -32,7 +32,7 @@ Options:
                                   [default: 3]
   --epochs INTEGER                Number of epochs  [default: 50]
   -steps, --steps_per_epoch INTEGER
-                                  Number of epochs  [default: 4000]
+                                  Number of steps per epoch  [default: 4000]
   -env, --env_name TEXT           Environment name  [default: Swimmer-v2]
   -hid, --hidden_sizes TEXT       Hidden sizes for actor and critic MLPs
                                   [default: (64,64)]
@@ -69,18 +69,17 @@ Options:
 ```bash
 git clone git@github.com:henighan/deeprl-intro.git
 cd deeprl-intro
-./install.sh
-source .work/bin/activave
+make install
 deeprl --help
 ```
 
 ## How do I test this?
 ```bash
-py.test tests
+make test
 ```
 
 If you want to use the mujoco environments, you will also need to follow the instructions [here](https://spinningup.openai.com/en/latest/user/installation.html#installing-mujoco-optional).
 
 ## Other notes
 
-Thus far I have only implemented VPG and PPO for gaussian and categorical policies. I stole spinup's logger, so I could easily plot and compare their and my results side-by-side.
+Thus far I have only implemented VPG and PPO for gaussian and categorical policies, (I'm still hunting down a bug in the DDPG agent). I stole spinup's logger, so I could easily plot and compare their and my results side-by-side.
