@@ -9,13 +9,13 @@ from deeprl.learners import DeterministicLearner
 @pytest.fixture
 def agent_step_ret():
     """ agent 'step' return value fixture """
-    return ({'act': np.array([0]), 'qval': 0}, {'QVals': 0})
+    return np.random.randn(1)
 
 
 @pytest.fixture
 def env_step_ret():
     """ environment step return value """
-    return (np.array([0]), 0, False, None)
+    return (np.array([0, 0]), 0, False, None)
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def test_episode_step_testing_false(mocker, learner):
     ret = learner.episode_step(obs, 0, False, 0, 0, 0, testing=False)
     ret_obs, ret_rew, ret_is_term, ret_ep_len, ret_ep_ret, ret_epoch_ctr = ret
     assert ret_ep_len == 1
-    learner.logger.store.assert_called_once()
+    learner.logger.store.assert_not_called()
     assert ret_epoch_ctr == 1
     assert learner.buffer.buf # ensure buffer was initialized
 
@@ -63,18 +63,18 @@ def test_play_episodes_reached_epoch_len(mocker, learner):
     learner.epoch_len = 2
     ret_ep_len, _, _ = learner.play_episode()
     assert ret_ep_len == 2
-    assert len(learner.logger.store.call_args_list) == 2
+    learner.logger.store.assert_not_called()
 
 
-def test_play_episode_max_ep_len(mocker, learner):
+def test_play_episode_max_ep_len(mocker, learner, env_step_ret):
     """ test play_episode when the max_ep_len is reached """
     learner.max_ep_len = 2
     learner.logger = mocker.Mock()
+    learner.env.step = mocker.Mock(return_value=env_step_ret)
     ret_ep_len, _, ret_epoch_ctr = learner.play_episode()
     assert ret_ep_len == 2
     assert ret_epoch_ctr == 2
-    learner.logger.store.assert_called_with(EpLen=2, EpRet=0.)
-    assert len(learner.logger.store.call_args_list) == 3
+    learner.logger.store.assert_called_once_with(EpLen=2, EpRet=0.)
     assert learner.buffer.ptr == 2
 
 
@@ -87,13 +87,12 @@ def test_play_episode_episode_ends(mocker, learner, env_step_ret):
         side_effect=[env_step_ret,
                      env_step_ret,
                      env_step_ret,
-                     (np.array([0]), 2., True, None)]) # last one is terminal!
+                     (np.array([0, 0]), 2., True, None)]) # last one is terminal!
     ret_ep_len, ret_ep_ret, _ = learner.play_episode()
     assert ret_ep_len == 4
     # note the return should include the reward from the last step!!!
     assert ret_ep_ret == 2.
-    learner.logger.store.assert_called_with(EpRet=2., EpLen=4)
-    assert len(learner.logger.store.call_args_list) == 5
+    learner.logger.store.assert_called_once_with(EpRet=2., EpLen=4)
 
 
 def test_test_epoch_smoke(learner):

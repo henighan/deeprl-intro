@@ -35,8 +35,8 @@ class DeterministicLearner:
                                          env.action_space)
         self.logger.setup_tf_saver(**saver_kwargs)
         var_counts = tuple(tf_utils.trainable_count(scope)
-                           for scope in ['pi', 'v'])
-        self.logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n'
+                           for scope in ['pi', 'q'])
+        self.logger.log('\nNumber of parameters: \t pi: %d, \t q: %d\n'
                         % var_counts)
         np.random.seed(seed)
         tf.set_random_seed(seed)
@@ -47,14 +47,13 @@ class DeterministicLearner:
         # environment variables to store in buffer
         env_to_buffer = dict(obs=obs, rew=rew, is_term=is_term)
         # Take agent step, return values to store in buffer, and in logs
-        agent_to_buffer, agent_to_log = self.agent.step(obs, testing=testing)
+        act = self.agent.step(obs, testing=testing)
         if not testing:
-            self.buffer.store({**env_to_buffer, **agent_to_buffer})
-            self.logger.store(**agent_to_log)
+            self.buffer.store({**env_to_buffer, 'act': act})
             epoch_ctr += 1
         ep_len += 1
         ep_ret += rew
-        obs, rew, is_term, _ = self.env.step(agent_to_buffer['act'])
+        obs, rew, is_term, _ = self.env.step(act)
         return obs, rew, is_term, ep_len, ep_ret, epoch_ctr
 
     def play_episode(self, epoch_ctr=0, testing=False):
@@ -83,8 +82,8 @@ class DeterministicLearner:
         """ train agent at the end of episode """
         batches = self.buffer.batches(n_batches=ep_len)
         for train_iter, batch in enumerate(batches):
-            self.agent.train(train_iter, batch)
-        self.agent.update_targets()
+            to_logger = self.agent.train(train_iter, batch)
+            self.logger.store(**to_logger)
 
     def run_epoch(self):
         """ run epoch of training + evaluation """
@@ -107,6 +106,7 @@ class DeterministicLearner:
             self.run_epoch()
             self.log_epoch(epoch, start_time)
             self.logger.save_state({'env': self.env}, None)
+        self.agent.sess.close()
 
     def log_epoch(self, epoch, start_time):
         """ Log info about epoch """
