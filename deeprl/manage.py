@@ -41,7 +41,7 @@ def process_cli_kwargs(all_kwargs):
 @click.option('--epochs', default=50, help='Number of epochs',
               show_default=True)
 @click.option('--steps_per_epoch', '-steps', default=4000,
-              help='Number of epochs', show_default=True)
+              help='Number of steps per epoch', show_default=True)
 @click.option('--env_name', '-env', default=['Swimmer-v2'],
               help='Environment name', show_default=True, multiple=True)
 @click.option('--hidden_sizes', '-hid', default=['(64,64)'],

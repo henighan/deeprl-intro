@@ -32,7 +32,7 @@ Options:
                                   [default: 3]
   --epochs INTEGER                Number of epochs  [default: 50]
   -steps, --steps_per_epoch INTEGER
-                                  Number of epochs  [default: 4000]
+                                  Number of steps per epoch  [default: 4000]
   -env, --env_name TEXT           Environment name  [default: Swimmer-v2]
   -hid, --hidden_sizes TEXT       Hidden sizes for actor and critic MLPs
                                   [default: (64,64)]
