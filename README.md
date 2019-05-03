@@ -69,18 +69,17 @@ Options:
 ```bash
 git clone git@github.com:henighan/deeprl-intro.git
 cd deeprl-intro
-./install.sh
-source .work/bin/activave
+make install
 deeprl --help
 ```
 
 ## How do I test this?
 ```bash
-py.test tests
+make test
 ```
 
 If you want to use the mujoco environments, you will also need to follow the instructions [here](https://spinningup.openai.com/en/latest/user/installation.html#installing-mujoco-optional).
 
 ## Other notes
 
-Thus far I have only implemented VPG and PPO for gaussian and categorical policies. I stole spinup's logger, so I could easily plot and compare their and my results side-by-side.
+Thus far I have only implemented VPG and PPO for gaussian and categorical policies, (I'm still hunting down a bug in the DDPG agent). I stole spinup's logger, so I could easily plot and compare their and my results side-by-side.
